@@ -23,6 +23,7 @@ public class ArtistController {
         return profileRepository.findAll();
     }
 
+
     // API lấy chi tiết 1 người (cho trang ArtistDetail)
     @GetMapping("/{id}")
     public ResponseEntity<Profile> getArtistById(@PathVariable Long id) {
