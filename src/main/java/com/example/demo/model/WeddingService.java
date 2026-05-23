@@ -5,17 +5,20 @@ import lombok.Data;
 
 @Entity
 @Table(name = "wedding_services")
-@Data // Nếu không dùng Lombok thì em tự generate Getter/Setter nhé
+@Data
 public class WeddingService {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String title;
-    private String shortDescription;
-    private String imageUrl;
-    private String iconName;
 
-    @Column(columnDefinition = "LONGTEXT")
-    private String detailContent;
+    @Column(name = "short_description")
+    private String shortDescription;
+
+    @Column(name = "price_range")
+    private String priceRange;
+
+    @Column(name = "icon_name")
+    private String iconName;
 }
