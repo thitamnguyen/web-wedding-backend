@@ -17,19 +17,10 @@ public class Booking {
     private String customerName;
 
     @Column(name = "customer_phone", nullable = false)
-    private String customerPhone; // <-- ĐẢM BẢO ĐÃ THÊM CỘT NÀY
+    private String customerPhone;
 
     @Column(name = "customer_email", nullable = false)
     private String customerEmail;
-
-    @Column(name = "service_id", nullable = false)
-    private Long serviceId;
-
-    @Column(name = "photographer_id")
-    private Long photographerId;
-
-    @Column(name = "makeup_artist_id")
-    private Long makeupArtistId;
 
     @Column(name = "booking_date", nullable = false)
     private LocalDate bookingDate;
@@ -47,4 +38,29 @@ public class Booking {
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // =========================================================================
+    // CẤU HÌNH QUAN HỆ ĐỐI TƯỢNG (JOIN BẢNG) ĐỂ LẤY TÊN HIỂN THỊ
+    // =========================================================================
+
+    @Column(name = "service_id")
+    private Long serviceId;
+
+    @ManyToOne
+    @JoinColumn(name = "service_id", insertable = false, updatable = false)
+    private WeddingService weddingService; // Lấy thông tin gói dịch vụ cưới
+
+    @Column(name = "photographer_id")
+    private Long photographerId;
+
+    @ManyToOne
+    @JoinColumn(name = "photographer_id", insertable = false, updatable = false)
+    private Profile photographerProfile; // Lấy thông tin nhiếp ảnh gia từ bảng profiles
+
+    @Column(name = "makeup_artist_id")
+    private Long makeupArtistId;
+
+    @ManyToOne
+    @JoinColumn(name = "makeup_artist_id", insertable = false, updatable = false)
+    private MakeupArtist makeupArtist; // Lấy thông tin makeup artist từ bảng beauty_experts
 }

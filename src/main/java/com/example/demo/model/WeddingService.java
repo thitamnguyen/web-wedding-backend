@@ -21,4 +21,11 @@ public class WeddingService {
 
     @Column(name = "icon_name")
     private String iconName;
+
+    private String imageUrl;
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    @Column(name = "detailed_description", columnDefinition = "TEXT")
+    private String detailedDescription;
 }
