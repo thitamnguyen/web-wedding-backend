@@ -7,7 +7,6 @@ import com.example.demo.repository.BookingRepository;
 import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.MakeupArtistRepository;
 import com.example.demo.repository.ProfileRepository;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -27,39 +26,73 @@ public class BookingService {
     @Autowired
     private ProfileRepository profileRepository;
 
+    @Autowired
+    private EmailService emailService;
+
     /**
-     * Hàm xử lý đặt lịch mới - Đã bổ sung tự động tính và lưu giá tiền
+     * Hàm xử lý đặt lịch mới - Đã tối ưu hóa luồng tự động duyệt, kiểm tra bận lịch và gửi email thông báo
      */
     public Booking createBooking(Booking booking) {
-        booking.setStatus("PENDING");
+        // --- 1. LOGIC KIỂM TRA TRÙNG LỊCH NGAY KHI ĐẶT ---
+
+        // Kiểm tra lịch bận của Nhiếp ảnh gia
+        if (booking.getPhotographerId() != null && booking.getBookingDate() != null) {
+            boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
+                    booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
+            );
+            if (isPhotoBusy) {
+                throw new RuntimeException("Nhiếp ảnh gia này đã có lịch chụp vào ngày " + booking.getBookingDate() + " rồi! Vui lòng chọn ngày khác hoặc thợ khác.");
+            }
+        }
+
+        // Kiểm tra lịch bận của Thợ Makeup
+        if (booking.getMakeupArtistId() != null && booking.getBookingDate() != null) {
+            boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
+                    booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
+            );
+            if (isMakeupBusy) {
+                throw new RuntimeException("Chuyên gia Makeup này đã có lịch trang điểm vào ngày " + booking.getBookingDate() + " rồi! Vui lòng đổi ngày hoặc chọn Artist khác.");
+            }
+        }
+
+        // --- 2. CẤP PHÁT TRẠNG THÁI TỰ ĐỘNG DUYỆT LUÔN ---
+        booking.setStatus("CONFIRMED");
         booking.setPaymentStatus("UNPAID");
 
+        // --- 3. TỰ ĐỘNG TÍNH GIÁ TIỀN TỪ GÓI DỊCH VỤ ---
         try {
-            // 1. Dựa vào serviceId từ form gửi lên, tìm thông tin Gói dịch vụ trong database
             if (booking.getServiceId() != null) {
                 WeddingService selectedService = serviceRepository.findById(booking.getServiceId()).orElse(null);
-
-                if (selectedService != null && selectedService.getPriceRange() != null) {
-                    // 2. Tiến hành bóc tách chuỗi (Ví dụ từ "25.000.000 VNĐ" chuyển thành số 25000000.0)
-                    String priceStr = selectedService.getPriceRange()
-                            .replace(".", "")      // Xóa dấu chấm phân tách
-                            .replace(" VNĐ", "")   // Xóa chữ VNĐ
-                            .trim();               // Xóa khoảng trắng thừa
-
-                    double calculatedPrice = Double.parseDouble(priceStr);
-
-                    // 3. Gán giá trị tiền thật tính được vào đối tượng booking trước khi lưu
-                    booking.setTotalPrice(calculatedPrice);
+                if (selectedService != null) {
+                    String rawPrice = selectedService.getPriceRange();
+                    if (rawPrice != null && !rawPrice.trim().isEmpty()) {
+                        String cleanPriceStr = rawPrice.replaceAll("[^0-9]", "");
+                        if (!cleanPriceStr.isEmpty()) {
+                            double calculatedPrice = Double.parseDouble(cleanPriceStr);
+                            booking.setTotalPrice(calculatedPrice);
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
-            // Nếu có lỗi trong quá trình bóc tách chuỗi (ví dụ gói ghi 'Giá liên hệ' không có số), mặc định giữ giá bằng 0
             booking.setTotalPrice(0.0);
-            System.err.println("Lỗi tự động tính giá tiền đơn đặt lịch: " + e.getMessage());
+            System.err.println("❌ Lỗi tự động tính giá tiền đơn đặt lịch: " + e.getMessage());
         }
 
-        // 4. Lưu xuống database bảng bookings
-        return bookingRepository.save(booking);
+        // --- 4. LƯU XUỐNG DATABASE ---
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // --- 5. TỰ ĐỘNG GỬI EMAIL THÔNG BÁO CHO KHÁCH HÀNG ---
+        try {
+            if (savedBooking.getCustomerEmail() != null && !savedBooking.getCustomerEmail().isEmpty()) {
+                // 🌟 FIX ĐỒNG BỘ: Truyền trực tiếp đối tượng savedBooking vào hàm để xử lý gửi mail ngầm
+                emailService.sendBookingConfirmationEmail(savedBooking);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi kích hoạt gửi email tự động: " + e.getMessage());
+        }
+
+        return savedBooking;
     }
 
     public List<Booking> getAllBookings() {
@@ -68,23 +101,71 @@ public class BookingService {
 
     public Booking updateStatus(Long id, String newStatus) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt lịch với ID: " + id));
+
+        if ("CONFIRMED".equalsIgnoreCase(newStatus)) {
+            if (booking.getPhotographerId() != null) {
+                boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
+                        booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
+                );
+                if (isPhotoBusy) {
+                    throw new RuntimeException("🚨 Lỗi: Nhiếp ảnh gia này đã bị trùng lịch chụp vào ngày " + booking.getBookingDate() + "!");
+                }
+            }
+
+            if (booking.getMakeupArtistId() != null) {
+                boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
+                        booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
+                );
+                if (isMakeupBusy) {
+                    throw new RuntimeException("🚨 Lỗi: Chuyên gia Makeup này đã có lịch trang điểm vào ngày " + booking.getBookingDate() + "!");
+                }
+            }
+        }
+
         booking.setStatus(newStatus.toUpperCase());
         return bookingRepository.save(booking);
     }
 
-    // 1. Trả về danh sách gói dịch vụ cưới
     public List<?> getMockWeddingServices() {
         return serviceRepository.findAll();
     }
 
-    // 2. Trả về danh sách Photographer từ bảng Profiles chuẩn thực tế
     public List<Profile> getMockPhotographers() {
         return profileRepository.findAll();
     }
 
-    // 3. Trả về danh sách Chuyên gia trang điểm từ bảng beauty_experts
     public List<?> getMockMakeupArtists() {
         return makeupArtistRepository.findAll();
+    }
+
+    public java.util.Map<String, Object> getDashboardStats() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+
+        long pendingCount = bookingRepository.countByStatus("PENDING");
+        long confirmedCount = bookingRepository.countByStatus("CONFIRMED");
+        long doneCount = bookingRepository.countByStatus("DONE");
+        long cancelledCount = bookingRepository.countByStatus("CANCELLED");
+
+        List<Booking> doneBookings = bookingRepository.findByStatus("DONE");
+        double totalRevenue = 0.0;
+        for (Booking b : doneBookings) {
+            if (b.getTotalPrice() != null) {
+                totalRevenue += b.getTotalPrice();
+            }
+        }
+
+        stats.put("totalBookings", bookingRepository.count());
+        stats.put("pendingBookings", pendingCount);
+        stats.put("confirmedBookings", confirmedCount);
+        stats.put("doneBookings", doneCount);
+        stats.put("cancelledBookings", cancelledCount);
+        stats.put("totalRevenue", totalRevenue);
+
+        return stats;
+    }
+
+    public List<Booking> trackBookingByPhone(String phone) {
+        return bookingRepository.findByCustomerPhoneOrderByBookingDateDesc(phone);
     }
 }
