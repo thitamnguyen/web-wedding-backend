@@ -8,11 +8,20 @@ import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.MakeupArtistRepository;
 import com.example.demo.repository.ProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class BookingService {
+
+    // 🌟 ĐÃ XÓA DÒNG @Autowired BookingService ĐỂ TRÁNH CRASH VÒNG LẶP TUẦN HOÀN
 
     @Autowired
     private BookingRepository bookingRepository;
@@ -34,8 +43,6 @@ public class BookingService {
      */
     public Booking createBooking(Booking booking) {
         // --- 1. LOGIC KIỂM TRA TRÙNG LỊCH NGAY KHI ĐẶT ---
-
-        // Kiểm tra lịch bận của Nhiếp ảnh gia
         if (booking.getPhotographerId() != null && booking.getBookingDate() != null) {
             boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
                     booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
@@ -45,7 +52,6 @@ public class BookingService {
             }
         }
 
-        // Kiểm tra lịch bận của Thợ Makeup
         if (booking.getMakeupArtistId() != null && booking.getBookingDate() != null) {
             boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
                     booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
@@ -85,7 +91,6 @@ public class BookingService {
         // --- 5. TỰ ĐỘNG GỬI EMAIL THÔNG BÁO CHO KHÁCH HÀNG ---
         try {
             if (savedBooking.getCustomerEmail() != null && !savedBooking.getCustomerEmail().isEmpty()) {
-                // 🌟 FIX ĐỒNG BỘ: Truyền trực tiếp đối tượng savedBooking vào hàm để xử lý gửi mail ngầm
                 emailService.sendBookingConfirmationEmail(savedBooking);
             }
         } catch (Exception e) {
@@ -139,14 +144,15 @@ public class BookingService {
         return makeupArtistRepository.findAll();
     }
 
-    public java.util.Map<String, Object> getDashboardStats() {
-        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+    public Map<String, Object> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
 
         long pendingCount = bookingRepository.countByStatus("PENDING");
         long confirmedCount = bookingRepository.countByStatus("CONFIRMED");
         long doneCount = bookingRepository.countByStatus("DONE");
         long cancelledCount = bookingRepository.countByStatus("CANCELLED");
 
+        // 🌟 FIX LỖI: Gọi hàm findByStatus(status) không phân trang để tính toán chuẩn tổng doanh thu của toàn hệ thống
         List<Booking> doneBookings = bookingRepository.findByStatus("DONE");
         double totalRevenue = 0.0;
         for (Booking b : doneBookings) {
@@ -167,5 +173,24 @@ public class BookingService {
 
     public List<Booking> trackBookingByPhone(String phone) {
         return bookingRepository.findByCustomerPhoneOrderByBookingDateDesc(phone);
+    }
+
+    // 🌟 FIX LỖI ÉP KIỂU: Hàm trả về đối tượng phân trang Page<Booking> chuẩn chỉ của Spring
+    public Page<Booking> getBookingsWithFilter(String status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        if (status == null || status.trim().isEmpty() || "ALL".equalsIgnoreCase(status)) {
+            return bookingRepository.findAll(pageable);
+        }
+
+        return bookingRepository.findByStatus(status, pageable);
+    }
+
+    public List<java.time.LocalDate> getPhotographerBusyDates(Long photographerId) {
+        return bookingRepository.findBusyDatesForPhotographer(photographerId);
+    }
+
+    public List<java.time.LocalDate> getMakeupArtistBusyDates(Long makeupArtistId) {
+        return bookingRepository.findBusyDatesForMakeupArtist(makeupArtistId);
     }
 }

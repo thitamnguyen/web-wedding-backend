@@ -2,10 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.model.Booking;
 import com.example.demo.repository.BookingRepository;
+import com.example.demo.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +18,8 @@ import java.util.Optional;
 @RequestMapping("/api/admin/bookings")
 @CrossOrigin(origins = "http://localhost:5173") // Cho phép React truy cập
 public class AdminBookingController {
-
+    @Autowired
+    private BookingService bookingService;
     @Autowired
     private BookingRepository bookingRepository;
 
@@ -42,5 +46,26 @@ public class AdminBookingController {
         }
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Không tìm thấy lịch đặt!"));
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<Page<Booking>> getBookings(
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) { // Mặc định hiển thị 5 đơn trên 1 trang để dễ test
+
+        Page<Booking> bookingsPage = bookingService.getBookingsWithFilter(status, page, size);
+
+        return ResponseEntity.ok((Page<Booking>) bookingsPage);
+    }
+
+    @GetMapping("/busy-dates/photographer/{id}")
+    public ResponseEntity<List<java.time.LocalDate>> getPhotographerBusyDates(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.getPhotographerBusyDates(id));
+    }
+
+    @GetMapping("/busy-dates/makeup/{id}")
+    public ResponseEntity<List<java.time.LocalDate>> getMakeupArtistBusyDates(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.getMakeupArtistBusyDates(id));
     }
 }
