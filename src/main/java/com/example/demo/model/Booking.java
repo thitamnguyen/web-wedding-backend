@@ -64,6 +64,9 @@ public class Booking {
     @JoinColumn(name = "makeup_artist_id", insertable = false, updatable = false)
     private MakeupArtist makeupArtist; // Lấy thông tin makeup artist từ bảng beauty_experts
 
+    @Column(name = "is_read")
+    private Boolean isRead = false; // Mặc định đơn hàng mới tạo là CHƯA ĐỌC thông báo
+
     public Long getId() {
         return id;
     }
@@ -190,5 +193,13 @@ public class Booking {
 
     public void setMakeupArtist(MakeupArtist makeupArtist) {
         this.makeupArtist = makeupArtist;
+    }
+
+    public Boolean getIsRead() {
+        return isRead;
+    }
+
+    public void setIsRead(Boolean read) {
+        isRead = read;
     }
 }
