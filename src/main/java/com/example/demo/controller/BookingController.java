@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -90,4 +91,45 @@ public class BookingController {
         // Trả về danh sách Chuyên gia makeup (Khớp với dữ liệu Elena Tran, Lisa Pham...)
         return ResponseEntity.ok(bookingService.getMockMakeupArtists());
     }
+    @GetMapping("/dashboard-stats")
+    public ResponseEntity<?> getDashboardStats() {
+        try {
+            return ResponseEntity.ok(bookingService.getDashboardStats());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi tải thống kê: " + e.getMessage());
+        }
+    }
+
+    // 1. API lấy danh sách các đơn hàng mới mà Admin chưa bấm xem
+    @GetMapping("/unread")
+    public ResponseEntity<?> getUnreadBookings() {
+        // Tận dụng Stream lọc các đơn có isRead = false hoặc null
+        List<Booking> unread = bookingService.getAllBookings().stream()
+                .filter(b -> b.getIsRead() == null || !b.getIsRead())
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(unread);
+    }
+
+    // 2. API đánh dấu đã đọc khi Admin bấm vào quả chuông hoặc xem đơn
+    @PutMapping("/{id}/read")
+    public ResponseEntity<?> markAsRead(@PathVariable Long id) {
+        try {
+            Booking booking = bookingService.getAllBookings().stream()
+                    .filter(b -> b.getId().equals(id)).findFirst()
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+            booking.setIsRead(true);
+            // Lưu lại trạng thái đã đọc vào DB
+            bookingService.createBooking(booking);
+            return ResponseEntity.ok(Map.of("message", "Đã đọc thông báo"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    // tim kiem thong tin da booking theo sdt
+    @GetMapping("/track")
+    public ResponseEntity<?> trackBooking(@RequestParam String phone) {
+        // Gọi thông qua bookingService thay vì gọi trực tiếp repository
+        return ResponseEntity.ok(bookingService.trackBookingByPhone(phone));
+    }
+
 }

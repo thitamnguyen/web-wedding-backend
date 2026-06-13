@@ -63,4 +63,7 @@ public class Booking {
     @ManyToOne
     @JoinColumn(name = "makeup_artist_id", insertable = false, updatable = false)
     private MakeupArtist makeupArtist; // Lấy thông tin makeup artist từ bảng beauty_experts
+
+    @Column(name = "is_read")
+    private Boolean isRead = false; // Mặc định đơn hàng mới tạo là CHƯA ĐỌC thông báo
 }
