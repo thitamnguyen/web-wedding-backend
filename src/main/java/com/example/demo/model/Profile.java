@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.Data;
 
 @Entity
@@ -21,4 +22,16 @@ public class Profile {
 
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    @Column(name = "experience_years")
+    private Integer experienceYears;
+
+    @Column(name = "rating", precision = 2, scale = 1)
+    private BigDecimal rating;
+
+    @Column(name = "review_count")
+    private Integer reviewCount;
+
+    @Column(name = "featured_work")
+    private String featuredWork;
 }

@@ -64,6 +64,131 @@ public class Booking {
     @JoinColumn(name = "makeup_artist_id", insertable = false, updatable = false)
     private MakeupArtist makeupArtist; // Lấy thông tin makeup artist từ bảng beauty_experts
 
-    @Column(name = "is_read")
-    private Boolean isRead = false; // Mặc định đơn hàng mới tạo là CHƯA ĐỌC thông báo
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public String getCustomerPhone() {
+        return customerPhone;
+    }
+
+    public void setCustomerPhone(String customerPhone) {
+        this.customerPhone = customerPhone;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
+    }
+
+    public LocalDate getBookingDate() {
+        return bookingDate;
+    }
+
+    public void setBookingDate(LocalDate bookingDate) {
+        this.bookingDate = bookingDate;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public Double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(Double totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Long getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(Long serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public WeddingService getWeddingService() {
+        return weddingService;
+    }
+
+    public void setWeddingService(WeddingService weddingService) {
+        this.weddingService = weddingService;
+    }
+
+    public Long getPhotographerId() {
+        return photographerId;
+    }
+
+    public void setPhotographerId(Long photographerId) {
+        this.photographerId = photographerId;
+    }
+
+    public Profile getPhotographerProfile() {
+        return photographerProfile;
+    }
+
+    public void setPhotographerProfile(Profile photographerProfile) {
+        this.photographerProfile = photographerProfile;
+    }
+
+    public Long getMakeupArtistId() {
+        return makeupArtistId;
+    }
+
+    public void setMakeupArtistId(Long makeupArtistId) {
+        this.makeupArtistId = makeupArtistId;
+    }
+
+    public MakeupArtist getMakeupArtist() {
+        return makeupArtist;
+    }
+
+    public void setMakeupArtist(MakeupArtist makeupArtist) {
+        this.makeupArtist = makeupArtist;
+    }
 }

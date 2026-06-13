@@ -21,7 +21,6 @@ import java.util.Map;
 @Service
 public class BookingService {
 
-    // 🌟 ĐÃ XÓA DÒNG @Autowired BookingService ĐỂ TRÁNH CRASH VÒNG LẶP TUẦN HOÀN
 
     @Autowired
     private BookingRepository bookingRepository;
