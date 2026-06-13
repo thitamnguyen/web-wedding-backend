@@ -1,29 +1,26 @@
 package com.example.demo.service;
 
 import com.example.demo.model.Booking;
-import com.example.demo.model.MakeupArtist;
-import com.example.demo.model.Profile;
 import com.example.demo.model.WeddingService;
+import com.example.demo.model.Profile;
 import com.example.demo.repository.BookingRepository;
+import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.MakeupArtistRepository;
 import com.example.demo.repository.ProfileRepository;
-import com.example.demo.repository.ServiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 
 @Service
 public class BookingService {
 
-    private static final Set<String> ALLOWED_STATUSES = Set.of("PENDING", "APPROVED", "CANCELLED");
-    private static final Pattern PRICE_PATTERN = Pattern.compile("(\\d[\\d\\.]*)");
 
     @Autowired
     private BookingRepository bookingRepository;
@@ -37,56 +34,100 @@ public class BookingService {
     @Autowired
     private ProfileRepository profileRepository;
 
+    @Autowired
+    private EmailService emailService;
+
     /**
-     * Xử lý đặt lịch mới - kiểm tra dữ liệu, xác thực dịch vụ và tính tổng tiền.
+     * Hàm xử lý đặt lịch mới - Đã tối ưu hóa luồng tự động duyệt, kiểm tra bận lịch và gửi email thông báo
      */
     public Booking createBooking(Booking booking) {
-        validateBookingRequest(booking);
-
-        booking.setCustomerName(booking.getCustomerName().trim());
-        booking.setCustomerPhone(booking.getCustomerPhone().trim());
-        booking.setCustomerEmail(booking.getCustomerEmail().trim().toLowerCase(Locale.ROOT));
-        booking.setMessage(booking.getMessage() == null ? null : booking.getMessage().trim());
-
-        WeddingService selectedService = serviceRepository.findById(booking.getServiceId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy gói dịch vụ đã chọn."));
-
-        if (booking.getPhotographerId() != null) {
-            Profile photographer = profileRepository.findById(booking.getPhotographerId())
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhiếp ảnh gia đã chọn."));
+        // --- 1. LOGIC KIỂM TRA TRÙNG LỊCH NGAY KHI ĐẶT ---
+        if (booking.getPhotographerId() != null && booking.getBookingDate() != null) {
+            boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
+                    booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
+            );
+            if (isPhotoBusy) {
+                throw new RuntimeException("Nhiếp ảnh gia này đã có lịch chụp vào ngày " + booking.getBookingDate() + " rồi! Vui lòng chọn ngày khác hoặc thợ khác.");
+            }
         }
 
-        if (booking.getMakeupArtistId() != null) {
-            MakeupArtist makeupArtist = makeupArtistRepository.findById(booking.getMakeupArtistId())
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyên gia makeup đã chọn."));
+        if (booking.getMakeupArtistId() != null && booking.getBookingDate() != null) {
+            boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
+                    booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
+            );
+            if (isMakeupBusy) {
+                throw new RuntimeException("Chuyên gia Makeup này đã có lịch trang điểm vào ngày " + booking.getBookingDate() + " rồi! Vui lòng đổi ngày hoặc chọn Artist khác.");
+            }
         }
 
-        applyServiceSpecificRules(booking, selectedService);
-        booking.setStatus("PENDING");
+        // --- 2. CẤP PHÁT TRẠNG THÁI TỰ ĐỘNG DUYỆT LUÔN ---
+        booking.setStatus("CONFIRMED");
         booking.setPaymentStatus("UNPAID");
-        booking.setTotalPrice(parsePrice(selectedService.getPriceRange()));
 
-        return bookingRepository.save(booking);
+        // --- 3. TỰ ĐỘNG TÍNH GIÁ TIỀN TỪ GÓI DỊCH VỤ ---
+        try {
+            if (booking.getServiceId() != null) {
+                WeddingService selectedService = serviceRepository.findById(booking.getServiceId()).orElse(null);
+                if (selectedService != null) {
+                    String rawPrice = selectedService.getPriceRange();
+                    if (rawPrice != null && !rawPrice.trim().isEmpty()) {
+                        String cleanPriceStr = rawPrice.replaceAll("[^0-9]", "");
+                        if (!cleanPriceStr.isEmpty()) {
+                            double calculatedPrice = Double.parseDouble(cleanPriceStr);
+                            booking.setTotalPrice(calculatedPrice);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            booking.setTotalPrice(0.0);
+            System.err.println("❌ Lỗi tự động tính giá tiền đơn đặt lịch: " + e.getMessage());
+        }
+
+        // --- 4. LƯU XUỐNG DATABASE ---
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // --- 5. TỰ ĐỘNG GỬI EMAIL THÔNG BÁO CHO KHÁCH HÀNG ---
+        try {
+            if (savedBooking.getCustomerEmail() != null && !savedBooking.getCustomerEmail().isEmpty()) {
+                emailService.sendBookingConfirmationEmail(savedBooking);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi kích hoạt gửi email tự động: " + e.getMessage());
+        }
+
+        return savedBooking;
     }
 
     public List<Booking> getAllBookings() {
-        return bookingRepository.findAllByOrderByCreatedAtDesc();
+        return bookingRepository.findAll();
     }
 
     public Booking updateStatus(Long id, String newStatus) {
-        if (newStatus == null || newStatus.isBlank()) {
-            throw new IllegalArgumentException("Trạng thái không được để trống.");
-        }
-
-        String normalizedStatus = newStatus.trim().toUpperCase(Locale.ROOT);
-        if (!ALLOWED_STATUSES.contains(normalizedStatus)) {
-            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận PENDING, APPROVED hoặc CANCELLED.");
-        }
-
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt lịch với ID: " + id));
 
-        booking.setStatus(normalizedStatus);
+        if ("CONFIRMED".equalsIgnoreCase(newStatus)) {
+            if (booking.getPhotographerId() != null) {
+                boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
+                        booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
+                );
+                if (isPhotoBusy) {
+                    throw new RuntimeException("🚨 Lỗi: Nhiếp ảnh gia này đã bị trùng lịch chụp vào ngày " + booking.getBookingDate() + "!");
+                }
+            }
+
+            if (booking.getMakeupArtistId() != null) {
+                boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
+                        booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
+                );
+                if (isMakeupBusy) {
+                    throw new RuntimeException("🚨 Lỗi: Chuyên gia Makeup này đã có lịch trang điểm vào ngày " + booking.getBookingDate() + "!");
+                }
+            }
+        }
+
+        booking.setStatus(newStatus.toUpperCase());
         return bookingRepository.save(booking);
     }
 
@@ -102,102 +143,53 @@ public class BookingService {
         return makeupArtistRepository.findAll();
     }
 
-    private void validateBookingRequest(Booking booking) {
-        if (booking == null) {
-            throw new IllegalArgumentException("Dữ liệu đặt lịch không hợp lệ.");
+    public Map<String, Object> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+
+        long pendingCount = bookingRepository.countByStatus("PENDING");
+        long confirmedCount = bookingRepository.countByStatus("CONFIRMED");
+        long doneCount = bookingRepository.countByStatus("DONE");
+        long cancelledCount = bookingRepository.countByStatus("CANCELLED");
+
+        // 🌟 FIX LỖI: Gọi hàm findByStatus(status) không phân trang để tính toán chuẩn tổng doanh thu của toàn hệ thống
+        List<Booking> doneBookings = bookingRepository.findByStatus("DONE");
+        double totalRevenue = 0.0;
+        for (Booking b : doneBookings) {
+            if (b.getTotalPrice() != null) {
+                totalRevenue += b.getTotalPrice();
+            }
         }
 
-        if (booking.getCustomerName() == null || booking.getCustomerName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng nhập họ và tên.");
-        }
+        stats.put("totalBookings", bookingRepository.count());
+        stats.put("pendingBookings", pendingCount);
+        stats.put("confirmedBookings", confirmedCount);
+        stats.put("doneBookings", doneCount);
+        stats.put("cancelledBookings", cancelledCount);
+        stats.put("totalRevenue", totalRevenue);
 
-        if (booking.getCustomerPhone() == null || booking.getCustomerPhone().trim().isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng nhập số điện thoại.");
-        }
-
-        if (booking.getCustomerEmail() == null || booking.getCustomerEmail().trim().isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng nhập email.");
-        }
-
-        if (!booking.getCustomerEmail().trim().matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new IllegalArgumentException("Email không đúng định dạng.");
-        }
-
-        if (booking.getBookingDate() == null) {
-            throw new IllegalArgumentException("Vui lòng chọn ngày dự kiến.");
-        }
-
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
-        if (booking.getBookingDate().isBefore(tomorrow)) {
-            throw new IllegalArgumentException("Ngày đặt lịch phải từ ngày mai trở đi.");
-        }
-
-        if (booking.getServiceId() == null) {
-            throw new IllegalArgumentException("Vui lòng chọn gói dịch vụ.");
-        }
+        return stats;
     }
 
-    private void applyServiceSpecificRules(Booking booking, WeddingService selectedService) {
-        String serviceText = buildServiceText(selectedService);
-
-        boolean isDressOnlyService = serviceText.contains("váy") || serviceText.contains("dress");
-        boolean needsPhotographer = serviceText.contains("chụp")
-                || serviceText.contains("photo")
-                || serviceText.contains("album")
-                || serviceText.contains("concept")
-                || serviceText.contains("studio");
-        boolean needsMakeup = serviceText.contains("makeup")
-                || serviceText.contains("trang điểm")
-                || serviceText.contains("chụp")
-                || serviceText.contains("photo")
-                || serviceText.contains("album")
-                || serviceText.contains("concept")
-                || serviceText.contains("studio");
-
-        if (isDressOnlyService) {
-            booking.setPhotographerId(null);
-            booking.setMakeupArtistId(null);
-            return;
-        }
-
-        if (!needsPhotographer) {
-            booking.setPhotographerId(null);
-        }
-
-        if (!needsMakeup) {
-            booking.setMakeupArtistId(null);
-        }
+    public List<Booking> trackBookingByPhone(String phone) {
+        return bookingRepository.findByCustomerPhoneOrderByBookingDateDesc(phone);
     }
 
-    private String buildServiceText(WeddingService selectedService) {
-        StringBuilder builder = new StringBuilder();
-        if (selectedService.getTitle() != null) {
-            builder.append(selectedService.getTitle()).append(' ');
+    // 🌟 FIX LỖI ÉP KIỂU: Hàm trả về đối tượng phân trang Page<Booking> chuẩn chỉ của Spring
+    public Page<Booking> getBookingsWithFilter(String status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        if (status == null || status.trim().isEmpty() || "ALL".equalsIgnoreCase(status)) {
+            return bookingRepository.findAll(pageable);
         }
-        if (selectedService.getShortDescription() != null) {
-            builder.append(selectedService.getShortDescription()).append(' ');
-        }
-        if (selectedService.getDetailedDescription() != null) {
-            builder.append(selectedService.getDetailedDescription());
-        }
-        return builder.toString().toLowerCase(Locale.ROOT);
+
+        return bookingRepository.findByStatus(status, pageable);
     }
 
-    private Double parsePrice(String priceRange) {
-        if (priceRange == null || priceRange.isBlank()) {
-            return 0.0;
-        }
+    public List<java.time.LocalDate> getPhotographerBusyDates(Long photographerId) {
+        return bookingRepository.findBusyDatesForPhotographer(photographerId);
+    }
 
-        Matcher matcher = PRICE_PATTERN.matcher(priceRange);
-        if (!matcher.find()) {
-            return 0.0;
-        }
-
-        String numericPart = matcher.group(1).replace(".", "");
-        try {
-            return BigDecimal.valueOf(Long.parseLong(numericPart)).doubleValue();
-        } catch (NumberFormatException exception) {
-            return 0.0;
-        }
+    public List<java.time.LocalDate> getMakeupArtistBusyDates(Long makeupArtistId) {
+        return bookingRepository.findBusyDatesForMakeupArtist(makeupArtistId);
     }
 }

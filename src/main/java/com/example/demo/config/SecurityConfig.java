@@ -43,7 +43,7 @@ public class SecurityConfig {
                         // Cho phép truy cập tài nguyên tĩnh công khai (ảnh upload, ảnh váy cưới)
                         .requestMatchers("/uploads/**", "/images/**").permitAll()
 
-                        // Các request hệ thống khác (nếu có) mới bắt đăng nhập xác thực
+                        // Các request hệ thống khác (nếu có) mới bắt đăng nh   ập xác thực
                         .anyRequest().authenticated()
                 );
 
