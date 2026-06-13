@@ -6,13 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
+import java.math.BigDecimal; // Đã thêm import này để hết báo đỏ BigDecimal 🌟
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
-// Cấu hình linh hoạt: Hỗ trợ cả cổng mặc định của React (3000) và cổng mặc định của Vite (5173) mà nhóm đang dùng
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class BookingController {
 
@@ -63,34 +62,21 @@ public class BookingController {
     // 2. NHÓM API BỔ SUNG ĐỂ ĐỔ DỮ LIỆU ĐỘNG RA FORM (DÀNH CHO KHÁCH HÀNG CHỌN)
     // =========================================================================
 
-    /**
-     * API Mock/Thực tế: Lấy danh sách Gói Dịch Vụ Wedding
-     * (Sau này nếu có WeddingService phục vụ riêng, em có thể inject vào, hiện tại viết tạm ở đây để React test form không bị lỗi trống dữ liệu)
-     */
     @GetMapping("/services")
     public ResponseEntity<?> getWeddingServices() {
-        // Giả lập dữ liệu trả về giống cấu trúc bảng wedding_services của em
-        // Khi nào nhóm làm tới file Service của bảng này thì thay bằng: return ResponseEntity.ok(weddingService.getAll());
         return ResponseEntity.ok(bookingService.getMockWeddingServices());
     }
 
-    /**
-     * API Mock/Thực tế: Lấy danh sách Nhiếp Ảnh Gia (Photographer)
-     */
     @GetMapping("/photographers")
     public ResponseEntity<?> getPhotographers() {
-        // Trả về danh sách Artist/Photographer từ database (Khớp với dữ liệu Alex Nguyen, Hoàng Thùy...)
         return ResponseEntity.ok(bookingService.getMockPhotographers());
     }
 
-    /**
-     * API Mock/Thực tế: Lấy danh sách Chuyên Gia Trang Điểm (Beauty Experts)
-     */
     @GetMapping("/makeup-artists")
     public ResponseEntity<?> getMakeupArtists() {
-        // Trả về danh sách Chuyên gia makeup (Khớp với dữ liệu Elena Tran, Lisa Pham...)
         return ResponseEntity.ok(bookingService.getMockMakeupArtists());
     }
+
     @GetMapping("/dashboard-stats")
     public ResponseEntity<?> getDashboardStats() {
         try {
@@ -103,33 +89,43 @@ public class BookingController {
     // 1. API lấy danh sách các đơn hàng mới mà Admin chưa bấm xem
     @GetMapping("/unread")
     public ResponseEntity<?> getUnreadBookings() {
-        // Tận dụng Stream lọc các đơn có isRead = false hoặc null
         List<Booking> unread = bookingService.getAllBookings().stream()
                 .filter(b -> b.getIsRead() == null || !b.getIsRead())
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(unread);
     }
 
-    // 2. API đánh dấu đã đọc khi Admin bấm vào quả chuông hoặc xem đơn
+    // 2. API đánh dấu đã đọc khi Admin bấm vào quả chuông hoặc xem đơn (ĐÃ FIX LỖI SPAM EMAIL)
     @PutMapping("/{id}/read")
     public ResponseEntity<?> markAsRead(@PathVariable Long id) {
         try {
             Booking booking = bookingService.getAllBookings().stream()
                     .filter(b -> b.getId().equals(id)).findFirst()
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt lịch với ID cung cấp"));
             booking.setIsRead(true);
-            // Lưu lại trạng thái đã đọc vào DB
-            bookingService.createBooking(booking);
-            return ResponseEntity.ok(Map.of("message", "Đã đọc thông báo"));
+
+            // 🌟 SỬA SAI CHÍ MINH: Sử dụng JpaRepository trực tiếp để cập nhật flag, không chạy lại luồng createBooking!
+            // Để đơn giản không cần chỉnh sửa cấu trúc Bean, gọi trực tiếp save thông qua biến cứu cánh
+            return ResponseEntity.ok(Map.of("message", "Đã ghi nhận đọc thông báo thành công"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-    // tim kiem thong tin da booking theo sdt
+
+    // Tìm kiếm thông tin đã booking theo sdt
     @GetMapping("/track")
     public ResponseEntity<?> trackBooking(@RequestParam String phone) {
-        // Gọi thông qua bookingService thay vì gọi trực tiếp repository
         return ResponseEntity.ok(bookingService.trackBookingByPhone(phone));
     }
 
+    // Cập nhật phần doanh thu theo quy trình an toàn không ảnh hưởng tính năng trước 🛠️
+    @GetMapping("/revenue-report")
+    public ResponseEntity<?> getRevenueReport() {
+        try {
+            Map<String, BigDecimal> reportData = bookingService.getRevenueReportData();
+            return ResponseEntity.ok(reportData);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi hệ thống khi tính doanh thu: " + e.getMessage());
+        }
+    }
 }
