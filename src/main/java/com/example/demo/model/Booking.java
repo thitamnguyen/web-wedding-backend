@@ -1,0 +1,194 @@
+package com.example.demo.model;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "bookings")
+@Data
+public class Booking {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "customer_name", nullable = false)
+    private String customerName;
+
+    @Column(name = "customer_phone", nullable = false)
+    private String customerPhone;
+
+    @Column(name = "customer_email", nullable = false)
+    private String customerEmail;
+
+    @Column(name = "booking_date", nullable = false)
+    private LocalDate bookingDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
+    @Column(name = "total_price")
+    private Double totalPrice = 0.0;
+
+    @Column(name = "payment_status")
+    private String paymentStatus = "UNPAID";
+
+    private String status = "PENDING";
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    // =========================================================================
+    // CẤU HÌNH QUAN HỆ ĐỐI TƯỢNG (JOIN BẢNG) ĐỂ LẤY TÊN HIỂN THỊ
+    // =========================================================================
+
+    @Column(name = "service_id")
+    private Long serviceId;
+
+    @ManyToOne
+    @JoinColumn(name = "service_id", insertable = false, updatable = false)
+    private WeddingService weddingService; // Lấy thông tin gói dịch vụ cưới
+
+    @Column(name = "photographer_id")
+    private Long photographerId;
+
+    @ManyToOne
+    @JoinColumn(name = "photographer_id", insertable = false, updatable = false)
+    private Profile photographerProfile; // Lấy thông tin nhiếp ảnh gia từ bảng profiles
+
+    @Column(name = "makeup_artist_id")
+    private Long makeupArtistId;
+
+    @ManyToOne
+    @JoinColumn(name = "makeup_artist_id", insertable = false, updatable = false)
+    private MakeupArtist makeupArtist; // Lấy thông tin makeup artist từ bảng beauty_experts
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public String getCustomerPhone() {
+        return customerPhone;
+    }
+
+    public void setCustomerPhone(String customerPhone) {
+        this.customerPhone = customerPhone;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
+    }
+
+    public LocalDate getBookingDate() {
+        return bookingDate;
+    }
+
+    public void setBookingDate(LocalDate bookingDate) {
+        this.bookingDate = bookingDate;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public Double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(Double totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Long getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(Long serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public WeddingService getWeddingService() {
+        return weddingService;
+    }
+
+    public void setWeddingService(WeddingService weddingService) {
+        this.weddingService = weddingService;
+    }
+
+    public Long getPhotographerId() {
+        return photographerId;
+    }
+
+    public void setPhotographerId(Long photographerId) {
+        this.photographerId = photographerId;
+    }
+
+    public Profile getPhotographerProfile() {
+        return photographerProfile;
+    }
+
+    public void setPhotographerProfile(Profile photographerProfile) {
+        this.photographerProfile = photographerProfile;
+    }
+
+    public Long getMakeupArtistId() {
+        return makeupArtistId;
+    }
+
+    public void setMakeupArtistId(Long makeupArtistId) {
+        this.makeupArtistId = makeupArtistId;
+    }
+
+    public MakeupArtist getMakeupArtist() {
+        return makeupArtist;
+    }
+
+    public void setMakeupArtist(MakeupArtist makeupArtist) {
+        this.makeupArtist = makeupArtist;
+    }
+}

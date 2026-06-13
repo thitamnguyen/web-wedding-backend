@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.LoginRequest;
+import com.example.demo.dto.AuthResponse;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.model.Role;
 import com.example.demo.model.User;
@@ -21,7 +22,7 @@ public class AuthService {
     @Autowired
     private RoleRepository roleRepository;
 
-    public String login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -30,7 +31,18 @@ public class AuthService {
             throw new RuntimeException("Wrong password");
         }
 
-        return "Login success";
+        String roleName = user.getRole() != null ? user.getRole().getName() : "ROLE_CLIENT";
+        String token = "authenticated-" + user.getId();
+
+        return new AuthResponse(
+                true,
+                "Đăng nhập thành công!",
+                token,
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                roleName
+        );
     }
 
     public String register(RegisterRequest request) {

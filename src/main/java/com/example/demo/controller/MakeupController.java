@@ -1,13 +1,14 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.MakeupArtist;
+import com.example.demo.model.ProductItem;
 import com.example.demo.repository.MakeupArtistRepository;
+import com.example.demo.repository.ProductItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/makeup-artists")
@@ -16,6 +17,9 @@ public class MakeupController {
 
     @Autowired
     private MakeupArtistRepository makeupArtistRepository;
+
+    @Autowired
+    private ProductItemRepository productItemRepository;
 
     @GetMapping
     public List<MakeupArtist> getAllMakeupArtists() {
@@ -26,5 +30,10 @@ public class MakeupController {
         return makeupArtistRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/works")
+    public List<ProductItem> getMakeupArtistWorks(@PathVariable Long id) {
+        return productItemRepository.findByMakeupArtistIdAndPublishedTrueOrderByPublishedAtDesc(id);
     }
 }
