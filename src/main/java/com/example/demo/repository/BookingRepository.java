@@ -43,4 +43,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Lấy danh sách các ngày bận của Thợ Makeup
     @Query("SELECT b.bookingDate FROM Booking b WHERE b.makeupArtistId = :makeupArtistId AND (b.status = 'CONFIRMED' OR b.status = 'DONE')")
     List<LocalDate> findBusyDatesForMakeupArtist(Long makeupArtistId);
+
+
+
 }

@@ -42,7 +42,7 @@ public class SecurityConfig {
 
                         // Cho phép truy cập tài nguyên tĩnh công khai (ảnh upload, ảnh váy cưới)
                         .requestMatchers("/uploads/**", "/images/**").permitAll()
-
+                        .requestMatchers("/api/bookings/**").permitAll() // Cho phép truy cập tạm thời để test
                         // Các request hệ thống khác (nếu có) mới bắt đăng nh   ập xác thực
                         .anyRequest().authenticated()
                 );
@@ -54,7 +54,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // Origin của React
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174","http://localhost:5175")); // Origin của React
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*")); // Cho phép mọi Header truyền lên
         configuration.setExposedHeaders(List.of("X-Try-On-Mode", "X-Try-On-Notice"));
