@@ -1,29 +1,38 @@
 package com.example.demo.controller;
 
-import com.example.demo.service.GeminiService;
+import com.example.demo.service.ChatService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/chat")
-@CrossOrigin(origins = "*") // Tránh lỗi chặn CORS khi chạy local
+@RequestMapping("/api/chatbot")
+@CrossOrigin(origins = "*")
 public class ChatController {
 
     @Autowired
-    private GeminiService geminiService;
+    private ChatService chatService;
 
-    // SỬA TẠI ĐÂY: Thay đổi sang đón nhận chuỗi text thô trực tiếp gửi từ Frontend
-    @PostMapping
-    public String handleChat(@RequestBody String userMessage) {
-        // Kiểm tra xem Frontend có gửi tin nhắn rỗng hay không
-        if (userMessage == null || userMessage.trim().isEmpty()) {
-            return "Tin nhắn từ người dùng không được để trống!";
+    @PostMapping("/ask")
+    public ResponseEntity<?> askChatbot(@RequestBody Map<String, String> request) {
+        try {
+            String userMessage = request.get("message");
+            if (userMessage == null || userMessage.trim().isEmpty()) {
+                return ResponseEntity.ok(Map.of("reply", "Hai bạn cần mình tư vấn thông tin gì ạ?"));
+            }
+
+            Map<String, Object> result = chatService.getAIResponse(userMessage);
+
+            // Bẫy lỗi đường truyền mạng hoặc Token OpenRouter gặp sự cố
+            if (result == null || result.containsKey("error")) {
+                return ResponseEntity.ok(Map.of("reply", "LuxeAI đang kiểm tra lại lịch chụp một chút, hai bạn nhắn lại sau vài giây nhé!"));
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("reply", "Lỗi hệ thống máy chủ: " + e.getMessage()));
         }
-
-        // Loại bỏ ký tự thừa hoặc dấu ngoặc kép bọc ngoài chuỗi text nếu có
-        String cleanMessage = userMessage.trim().replaceAll("^\"|\"$", "");
-
-        // Gửi sang GeminiService xử lý kết nối trực tiếp với Google
-        return geminiService.askGemini(cleanMessage);
     }
 }
