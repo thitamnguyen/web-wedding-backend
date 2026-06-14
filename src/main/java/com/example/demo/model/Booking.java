@@ -12,6 +12,15 @@ public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    //luu theo user_id
+    // Nếu map thẳng liên kết sang bảng Người Dùng (User/Account)
+    // Sửa lại đoạn này trong Booking.java để không bị lỗi trùng cột user_id
+    @ManyToOne
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
+
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(name = "customer_name", nullable = false)
     private String customerName;
