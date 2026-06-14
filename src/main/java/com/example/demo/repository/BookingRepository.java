@@ -32,6 +32,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm kiếm danh sách đặt lịch theo số điện thoại
     List<Booking> findByCustomerPhoneOrderByBookingDateDesc(String customerPhone);
 
+    List<Booking> findByCustomerEmailOrderByBookingDateDesc(String customerEmail);
+
+    List<Booking> findByCustomerPhoneOrCustomerEmailOrderByBookingDateDesc(String customerPhone, String customerEmail);
+
     List<Booking> findByPhotographerIdAndStatus(Long photographerId, String status);
 
     List<Booking> findByMakeupArtistIdAndStatus(Long makeupArtistId, String status);
@@ -43,7 +47,4 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Lấy danh sách các ngày bận của Thợ Makeup
     @Query("SELECT b.bookingDate FROM Booking b WHERE b.makeupArtistId = :makeupArtistId AND (b.status = 'CONFIRMED' OR b.status = 'DONE')")
     List<LocalDate> findBusyDatesForMakeupArtist(Long makeupArtistId);
-
-
-
 }
