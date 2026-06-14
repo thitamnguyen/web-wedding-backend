@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
@@ -23,4 +25,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // Đếm tổng số đánh giá của thợ makeup
     @Query("SELECT COUNT(r) FROM Review r WHERE r.makeupArtistId = :makeupArtistId")
     Long countReviewsForMakeupArtist(Long makeupArtistId);
+
+    List<Review> findByBookingIdInOrderByCreatedAtDesc(List<Long> bookingIds);
 }
