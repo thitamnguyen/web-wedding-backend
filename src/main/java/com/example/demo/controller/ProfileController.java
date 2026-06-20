@@ -7,13 +7,21 @@ import com.example.demo.dto.ProfileUserDto;
 import com.example.demo.service.ProfileService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/profile")
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@PreAuthorize("hasRole('CLIENT')")
 public class ProfileController {
 
     private final ProfileService profileService;
@@ -41,7 +49,7 @@ public class ProfileController {
         try {
             ProfileUserDto updated = profileService.updateProfile(authorization, request);
             return ResponseEntity.ok(Map.of(
-                    "message", "Cập nhật thông tin thành công",
+                    "message", "Cap nhat thong tin thanh cong",
                     "user", updated
             ));
         } catch (Exception e) {
@@ -61,7 +69,7 @@ public class ProfileController {
         try {
             ProfileUserDto updated = profileService.changePassword(authorization, request);
             return ResponseEntity.ok(Map.of(
-                    "message", "Đổi mật khẩu thành công",
+                    "message", "Doi mat khau thanh cong",
                     "user", updated
             ));
         } catch (Exception e) {
@@ -76,6 +84,6 @@ public class ProfileController {
 
     private boolean isAuthError(Exception e) {
         String message = e.getMessage();
-        return "Chưa đăng nhập".equals(message) || "Không tìm thấy người dùng".equals(message);
+        return "Chua dang nhap".equals(message) || "Khong tim thay nguoi dung".equals(message);
     }
 }

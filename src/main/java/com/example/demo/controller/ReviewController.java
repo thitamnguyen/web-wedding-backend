@@ -1,12 +1,19 @@
 package com.example.demo.controller;
 
-import com.example.demo.model.Review;
-import com.example.demo.service.ReviewService;
-import com.example.demo.repository.ReviewRepository; // Import thêm repo vào đây
 import com.example.demo.dto.StaffRatingDto;
+import com.example.demo.model.Review;
+import com.example.demo.repository.ReviewRepository;
+import com.example.demo.service.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -17,9 +24,10 @@ public class ReviewController {
     private ReviewService reviewService;
 
     @Autowired
-    private ReviewRepository reviewRepository; // Tiêm repo vào để dùng luôn cho nhanh
+    private ReviewRepository reviewRepository;
 
     @PostMapping("/create")
+    @PreAuthorize("hasRole('CLIENT')")
     public ResponseEntity<?> createReview(@RequestBody Review review) {
         try {
             Review savedReview = reviewService.saveReview(review);
@@ -29,7 +37,6 @@ public class ReviewController {
         }
     }
 
-    // API 1: Lấy điểm thợ ảnh
     @GetMapping("/rating/photographer/{id}")
     public ResponseEntity<?> getPhotographerRating(@PathVariable Long id) {
         Double avg = reviewRepository.getAverageRatingForPhotographer(id);
@@ -37,7 +44,6 @@ public class ReviewController {
         return ResponseEntity.ok(new StaffRatingDto(avg, count));
     }
 
-    // API 2: Lấy điểm thợ makeup
     @GetMapping("/rating/makeup/{id}")
     public ResponseEntity<?> getMakeupArtistRating(@PathVariable Long id) {
         Double avg = reviewRepository.getAverageRatingForMakeupArtist(id);

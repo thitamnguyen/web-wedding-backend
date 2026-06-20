@@ -211,4 +211,6 @@ public class Booking {
     public void setIsRead(Boolean read) {
         isRead = read;
     }
+
+
 }

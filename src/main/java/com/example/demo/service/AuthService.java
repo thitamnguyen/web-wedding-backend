@@ -68,9 +68,14 @@ public class AuthService {
         }
 
         String roleName = user.getRole() != null ? user.getRole().getName() : "ROLE_CLIENT";
+        String sessionType = switch (roleName.toUpperCase(Locale.ROOT)) {
+            case "ROLE_ADMIN" -> "admin";
+            case "ROLE_STAFF" -> "staff";
+            default -> "user";
+        };
         String token = "authenticated-" + user.getId();
 
-        return new AuthResponse(
+        AuthResponse response = new AuthResponse(
                 true,
                 "Đăng nhập thành công!",
                 token,
@@ -79,8 +84,11 @@ public class AuthService {
                 user.getEmail(),
                 user.getPhone(),
                 roleName,
-                "ROLE_ADMIN".equalsIgnoreCase(roleName) ? "admin" : "user"
+                sessionType
         );
+        response.setStaffType(user.getStaffType());
+        response.setStaffRefId(user.getStaffRefId());
+        return response;
     }
 
     public String register(RegisterRequest request) {

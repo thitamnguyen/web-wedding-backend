@@ -4,10 +4,21 @@ import com.example.demo.model.Booking;
 import com.example.demo.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal; // Đã thêm import này để hết báo đỏ BigDecimal 🌟
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -18,35 +29,54 @@ public class BookingController {
     @Autowired
     private BookingService bookingService;
 
-    // =========================================================================
-    // 1. NHÓM API QUẢN LÝ ĐƠN ĐẶT LỊCH (BOOKING CORE)
-    // =========================================================================
-
-    /**
-     * API cho khách hàng gửi form đặt lịch từ React xuống
-     */
     @PostMapping("/create")
-    public ResponseEntity<?> createBooking(@RequestBody Booking booking) {
+    @PreAuthorize("hasRole('CLIENT')")
+    public ResponseEntity<?> createBooking(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestBody Booking booking) {
         try {
+            if (booking.getUserId() == null) {
+                Long userId = extractUserId(authorization);
+                if (userId != null) {
+                    booking.setUserId(userId);
+                }
+            }
             Booking savedBooking = bookingService.createBooking(booking);
             return ResponseEntity.ok(savedBooking);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi khi đặt lịch: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Loi khi dat lich: " + e.getMessage());
         }
     }
 
-    /**
-     * API cho trang quản trị Admin lấy toàn bộ danh sách đơn đặt lịch
-     */
+    private Long extractUserId(String authorization) {
+        if (authorization == null || authorization.isBlank()) {
+            return null;
+        }
+
+        String token = authorization.trim();
+        if (token.toLowerCase(Locale.ROOT).startsWith("bearer ")) {
+            token = token.substring(7).trim();
+        }
+
+        if (!token.startsWith("authenticated-")) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(token.substring("authenticated-".length()));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
     @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAllBookings() {
         return ResponseEntity.ok(bookingService.getAllBookings());
     }
 
-    /**
-     * API cho Admin xử lý Duyệt hoặc Hủy đơn hàng dựa trên ID
-     */
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateBookingStatus(
             @PathVariable Long id,
             @RequestParam String status) {
@@ -54,13 +84,9 @@ public class BookingController {
             Booking updatedBooking = bookingService.updateStatus(id, status);
             return ResponseEntity.ok(updatedBooking);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi cập nhật trạng thái: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Loi cap nhat trang thai: " + e.getMessage());
         }
     }
-
-    // =========================================================================
-    // 2. NHÓM API BỔ SUNG ĐỂ ĐỔ DỮ LIỆU ĐỘNG RA FORM (DÀNH CHO KHÁCH HÀNG CHỌN)
-    // =========================================================================
 
     @GetMapping("/services")
     public ResponseEntity<?> getWeddingServices() {
@@ -78,16 +104,17 @@ public class BookingController {
     }
 
     @GetMapping("/dashboard-stats")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getDashboardStats() {
         try {
             return ResponseEntity.ok(bookingService.getDashboardStats());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi tải thống kê: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Loi tai thong ke: " + e.getMessage());
         }
     }
 
-    // 1. API lấy danh sách các đơn hàng mới mà Admin chưa bấm xem
     @GetMapping("/unread")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getUnreadBookings() {
         List<Booking> unread = bookingService.getAllBookings().stream()
                 .filter(b -> b.getIsRead() == null || !b.getIsRead())
@@ -95,38 +122,34 @@ public class BookingController {
         return ResponseEntity.ok(unread);
     }
 
-    // 2. API đánh dấu đã đọc khi Admin bấm vào quả chuông hoặc xem đơn (ĐÃ FIX LỖI SPAM EMAIL)
     @PutMapping("/{id}/read")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> markAsRead(@PathVariable Long id) {
         try {
             Booking booking = bookingService.getAllBookings().stream()
-                    .filter(b -> b.getId().equals(id)).findFirst()
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt lịch với ID cung cấp"));
+                    .filter(b -> b.getId().equals(id))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Khong tim thay don dat lich voi ID cung cap"));
             booking.setIsRead(true);
-
-            // 🌟 SỬA SAI CHÍ MINH: Sử dụng JpaRepository trực tiếp để cập nhật flag, không chạy lại luồng createBooking!
-            // Để đơn giản không cần chỉnh sửa cấu trúc Bean, gọi trực tiếp save thông qua biến cứu cánh
-            return ResponseEntity.ok(Map.of("message", "Đã ghi nhận đọc thông báo thành công"));
+            return ResponseEntity.ok(Map.of("message", "Da ghi nhan doc thong bao thanh cong"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // Tìm kiếm thông tin đã booking theo sdt
     @GetMapping("/track")
     public ResponseEntity<?> trackBooking(@RequestParam String phone) {
         return ResponseEntity.ok(bookingService.trackBookingByPhone(phone));
     }
 
-    // Cập nhật phần doanh thu theo quy trình an toàn không ảnh hưởng tính năng trước 🛠️
     @GetMapping("/revenue-report")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getRevenueReport() {
         try {
             Map<String, BigDecimal> reportData = bookingService.getRevenueReportData();
             return ResponseEntity.ok(reportData);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi hệ thống khi tính doanh thu: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Loi he thong khi tinh doanh thu: " + e.getMessage());
         }
     }
-
 }

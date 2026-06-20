@@ -1,73 +1,97 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.BlogPost;
-import com.example.demo.repository.BlogPostRepository; // Nhớ đổi tên package theo đúng dự án của em
+import com.example.demo.repository.BlogPostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/blogs")
-@CrossOrigin(origins = "http://localhost:3000") // Cấu hình CORS để React gọi không bị chặn lỗi bảo mật
+@CrossOrigin(origins = "*")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminBlogController {
-
 
     @Autowired
     private BlogPostRepository blogPostRepository;
 
-    // 1. API: Lấy toàn bộ danh sách bài viết sắp xếp theo ID giảm dần (Bài mới lên trước)
     @GetMapping
-    public List<BlogPost> getAllBlogs() {
-        return blogPostRepository.findAll();
+    public List<BlogPost> getAllPosts() {
+        return blogPostRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(BlogPost::getPublishedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
     }
 
-    // 2. API: Viết bài viết Blog mới
+    @GetMapping("/{id}")
+    public ResponseEntity<BlogPost> getPostById(@PathVariable Long id) {
+        return blogPostRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
-    public ResponseEntity<?> createBlogPost(@RequestBody BlogPost blogPost) {
-        try {
-            blogPost.setPublishedAt(LocalDateTime.now()); // Tự động ghi nhận giờ xuất bản thực tế
-            if(blogPost.getCategoryLabel() == null || blogPost.getCategoryLabel().isEmpty()) {
-                blogPost.setCategoryLabel("Blog");
-            }
-            BlogPost savedPost = blogPostRepository.save(blogPost);
-            return ResponseEntity.ok(savedPost);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Lỗi khi thêm bài viết: " + e.getMessage());
+    public ResponseEntity<BlogPost> createPost(@RequestBody BlogPost blogPost) {
+        if (blogPost.getPublishedAt() == null) {
+            blogPost.setPublishedAt(LocalDateTime.now());
         }
+
+        if (blogPost.getPublished() == null) {
+            blogPost.setPublished(Boolean.TRUE);
+        }
+
+        return ResponseEntity.ok(blogPostRepository.save(blogPost));
     }
 
-    // 3. API: Sửa thông tin nội dung bài viết cũ
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateBlogPost(@PathVariable Long id, @RequestBody BlogPost updatedPost) {
-        return blogPostRepository.findById(id).map(existingPost -> {
-            existingPost.setTitle(updatedPost.getTitle());
-            existingPost.setSlug(updatedPost.getSlug());
-            existingPost.setCategory(updatedPost.getCategory());
-            existingPost.setCategoryLabel(updatedPost.getCategoryLabel());
-            existingPost.setExcerpt(updatedPost.getExcerpt());
-            existingPost.setContent(updatedPost.getContent());
-            existingPost.setCoverImageUrl(updatedPost.getCoverImageUrl());
-            existingPost.setAuthorName(updatedPost.getAuthorName());
-            existingPost.setAuthorTitle(updatedPost.getAuthorTitle());
-            existingPost.setReadTimeMinutes(updatedPost.getReadTimeMinutes());
-            existingPost.setTags(updatedPost.getTags());
-            existingPost.setPublished(updatedPost.getPublished());
+    public ResponseEntity<BlogPost> updatePost(@PathVariable Long id, @RequestBody BlogPost postDetails) {
+        BlogPost existingPost = blogPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Khong tim thay bai viet voi ID: " + id));
 
-            BlogPost saved = blogPostRepository.save(existingPost);
-            return ResponseEntity.ok(saved);
-        }).orElse(ResponseEntity.notFound().build());
+        existingPost.setTitle(postDetails.getTitle());
+        existingPost.setSlug(postDetails.getSlug());
+        existingPost.setCategory(postDetails.getCategory());
+        existingPost.setCategoryLabel(postDetails.getCategoryLabel());
+        existingPost.setExcerpt(postDetails.getExcerpt());
+        existingPost.setContent(postDetails.getContent());
+        existingPost.setCoverImageUrl(postDetails.getCoverImageUrl());
+        existingPost.setAuthorName(postDetails.getAuthorName());
+        existingPost.setAuthorTitle(postDetails.getAuthorTitle());
+        existingPost.setReadTimeMinutes(postDetails.getReadTimeMinutes());
+        existingPost.setTags(postDetails.getTags());
+        existingPost.setPublished(postDetails.getPublished());
+
+        if (postDetails.getPublishedAt() != null) {
+            existingPost.setPublishedAt(postDetails.getPublishedAt());
+        } else if (existingPost.getPublishedAt() == null) {
+            existingPost.setPublishedAt(LocalDateTime.now());
+        }
+
+        return ResponseEntity.ok(blogPostRepository.save(existingPost));
     }
 
-    // 4. API: Xóa vĩnh viễn bài viết khỏi hệ thống tạp chí
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteBlogPost(@PathVariable Long id) {
-        return blogPostRepository.findById(id).map(post -> {
-            blogPostRepository.delete(post);
-            return ResponseEntity.ok("Đã xóa bài viết thành công!");
-        }).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> deletePost(@PathVariable Long id) {
+        BlogPost existingPost = blogPostRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Khong tim thay bai viet voi ID: " + id));
+
+        blogPostRepository.delete(existingPost);
+        return ResponseEntity.ok().build();
     }
 }

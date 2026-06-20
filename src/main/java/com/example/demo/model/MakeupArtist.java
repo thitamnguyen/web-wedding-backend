@@ -14,6 +14,8 @@ public class MakeupArtist {
     private String jobTitle;
     private String avatarUrl;
     private String award;
+    @Column(name = "user_id")
+    private Long userId;
     @Column(columnDefinition = "TEXT") // Sửa lỗi Data too long
     private String description;
     private String specialty;
@@ -40,6 +42,9 @@ public class MakeupArtist {
 
     public String getAward() { return award; }
     public void setAward(String award) { this.award = award; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

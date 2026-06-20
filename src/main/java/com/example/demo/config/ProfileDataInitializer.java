@@ -3,12 +3,14 @@ package com.example.demo.config;
 import com.example.demo.model.Profile;
 import com.example.demo.repository.ProfileRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Component
+@Order(10)
 public class ProfileDataInitializer implements CommandLineRunner {
 
     private final ProfileRepository profileRepository;
