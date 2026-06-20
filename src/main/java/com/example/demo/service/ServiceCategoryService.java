@@ -68,6 +68,9 @@ public class ServiceCategoryService {
                         new Locale("vi", "VN")
                 );
 
+        // QUAN TRỌNG: Thêm trường này vào DTO của em (Nhớ bảo kỹ thuật thêm thuộc tính Double rawPrice vào file ServicePackageResponse.java nhé)
+        response.setRawPrice(servicePackage.getPrice());
+
         response.setPrice(
                 vn.format(servicePackage.getPrice()) + "đ"
         );
@@ -91,6 +94,7 @@ public class ServiceCategoryService {
         response.setProducts(
                 servicePackage.getProducts()
         );
+
 
         return response;
     }
