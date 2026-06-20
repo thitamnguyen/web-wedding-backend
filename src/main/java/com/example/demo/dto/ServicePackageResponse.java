@@ -68,4 +68,8 @@ public class ServicePackageResponse {
     public void setProducts(String products) {
         this.products = products;
     }
+
+    public void setRawPrice(Double price) {
+
+    }
 }
