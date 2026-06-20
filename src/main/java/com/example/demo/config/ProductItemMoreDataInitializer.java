@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
+@org.springframework.core.annotation.Order(12)
 public class ProductItemMoreDataInitializer implements CommandLineRunner {
 
     private final ProductItemRepository productItemRepository;
@@ -55,7 +56,7 @@ public class ProductItemMoreDataInitializer implements CommandLineRunner {
                         "Premium",
                         "2026-06-10T10:15:00",
                         "<p>Ivory Grand Hall ???c thi?t k? cho c?p ??i mu?n m?t concept th?t sang, c? kh?ng gian l?n v? c?m gi?c cao c?p ngay t? ?nh nh?n ??u ti?n.</p>",
-                        5L,
+                        1L,
                         null
                 ),
                 create(
@@ -71,7 +72,7 @@ public class ProductItemMoreDataInitializer implements CommandLineRunner {
                         "Outdoor",
                         "2026-06-09T09:40:00",
                         "<p>Forest Light Editorial t?n d?ng ?nh s?ng t? nhi?n, th?ch h?p cho c?p ??i th?ch b? ?nh m?m, s?ch v? c? chi?u s?u.</p>",
-                        6L,
+                        2L,
                         null
                 ),
                 create(
@@ -216,7 +217,7 @@ public class ProductItemMoreDataInitializer implements CommandLineRunner {
                         "2026-06-10T14:20:00",
                         "<p>Rose Beige Glow l? ki?u makeup d? ?ng d?ng, d? l?n ?nh v? h?p nhi?u ki?u v?y c??i kh?c nhau.</p>",
                         null,
-                        5L
+                        1L
                 ),
                 create(
                         "Bridal Makeup: Couture Soft Wing",
@@ -232,7 +233,7 @@ public class ProductItemMoreDataInitializer implements CommandLineRunner {
                         "2026-06-09T12:30:00",
                         "<p>Couture Soft Wing h?p v?i c? d?u mu?n m?t layout makeup s?ng, s?c s?o h?n nh?ng v?n r?t m?m v? sang.</p>",
                         null,
-                        6L
+                        2L
                 ),
                 create(
                         "Bridal Makeup: Pearl Nude Signature",

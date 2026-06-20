@@ -7,8 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -16,21 +24,22 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin/bookings")
-@CrossOrigin(origins = "http://localhost:5173") // Cho phép React truy cập
+@CrossOrigin(origins = "http://localhost:5173")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminBookingController {
+
     @Autowired
     private BookingService bookingService;
+
     @Autowired
     private BookingRepository bookingRepository;
 
-    // 1. API Lấy toàn bộ danh sách lịch đặt cưới
     @GetMapping
     public ResponseEntity<List<Booking>> getAllBookings() {
         List<Booking> bookings = bookingRepository.findAll();
         return ResponseEntity.ok(bookings);
     }
 
-    // 2. API Cập nhật trạng thái duyệt lịch (CONFIRMED, DONE, CANCELLED)
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
         Optional<Booking> bookingOpt = bookingRepository.findById(id);
@@ -42,21 +51,20 @@ public class AdminBookingController {
             booking.setStatus(newStatus);
             bookingRepository.save(booking);
 
-            return ResponseEntity.ok(Map.of("message", "Cập nhật trạng thái lịch hẹn thành công!"));
+            return ResponseEntity.ok(Map.of("message", "Cap nhat trang thai lich hen thanh cong!"));
         }
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Không tìm thấy lịch đặt!"));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Khong tim thay lich dat!"));
     }
 
     @GetMapping("/list")
     public ResponseEntity<Page<Booking>> getBookings(
             @RequestParam(defaultValue = "ALL") String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) { // Mặc định hiển thị 5 đơn trên 1 trang để dễ test
+            @RequestParam(defaultValue = "5") int size) {
 
         Page<Booking> bookingsPage = bookingService.getBookingsWithFilter(status, page, size);
-
-        return ResponseEntity.ok((Page<Booking>) bookingsPage);
+        return ResponseEntity.ok(bookingsPage);
     }
 
     @GetMapping("/busy-dates/photographer/{id}")

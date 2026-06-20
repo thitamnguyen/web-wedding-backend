@@ -36,9 +36,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByCustomerPhoneOrCustomerEmailOrderByBookingDateDesc(String customerPhone, String customerEmail);
 
+    List<Booking> findByUserIdOrderByBookingDateDesc(Long userId);
+
     List<Booking> findByPhotographerIdAndStatus(Long photographerId, String status);
 
+    List<Booking> findByPhotographerIdOrderByBookingDateDesc(Long photographerId);
+
     List<Booking> findByMakeupArtistIdAndStatus(Long makeupArtistId, String status);
+
+    List<Booking> findByMakeupArtistIdOrderByBookingDateDesc(Long makeupArtistId);
 
     // Lấy danh sách các ngày bận của Nhiếp ảnh gia
     @Query("SELECT b.bookingDate FROM Booking b WHERE b.photographerId = :photographerId AND (b.status = 'CONFIRMED' OR b.status = 'DONE')")

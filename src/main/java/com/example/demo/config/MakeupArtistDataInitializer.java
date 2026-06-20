@@ -5,12 +5,14 @@ import com.example.demo.model.MakeupPortfolio;
 import com.example.demo.model.MakeupReview;
 import com.example.demo.repository.MakeupArtistRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Order(11)
 public class MakeupArtistDataInitializer implements CommandLineRunner {
 
     private final MakeupArtistRepository makeupArtistRepository;

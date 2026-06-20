@@ -10,6 +10,8 @@ public class AuthResponse {
     private String phone;
     private String role;
     private String sessionType;
+    private String staffType;
+    private Long staffRefId;
 
     public AuthResponse() {
     }
@@ -96,5 +98,21 @@ public class AuthResponse {
 
     public void setSessionType(String sessionType) {
         this.sessionType = sessionType;
+    }
+
+    public String getStaffType() {
+        return staffType;
+    }
+
+    public void setStaffType(String staffType) {
+        this.staffType = staffType;
+    }
+
+    public Long getStaffRefId() {
+        return staffRefId;
+    }
+
+    public void setStaffRefId(Long staffRefId) {
+        this.staffRefId = staffRefId;
     }
 }

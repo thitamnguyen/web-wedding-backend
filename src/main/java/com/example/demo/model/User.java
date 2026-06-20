@@ -25,6 +25,12 @@ public class User {
     @Column(columnDefinition = "TINYINT(1) DEFAULT 1")
     private Integer status = 1;
 
+    @Column(name = "staff_type", length = 30)
+    private String staffType;
+
+    @Column(name = "staff_ref_id")
+    private Long staffRefId;
+
     // Liên kết với bảng Role (Nhiều User có 1 Role)
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id")
@@ -93,6 +99,22 @@ public class User {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public String getStaffType() {
+        return staffType;
+    }
+
+    public void setStaffType(String staffType) {
+        this.staffType = staffType;
+    }
+
+    public Long getStaffRefId() {
+        return staffRefId;
+    }
+
+    public void setStaffRefId(Long staffRefId) {
+        this.staffRefId = staffRefId;
     }
 
     public Role getRole() {

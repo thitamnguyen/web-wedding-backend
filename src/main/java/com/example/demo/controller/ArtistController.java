@@ -6,7 +6,16 @@ import com.example.demo.repository.ProfileRepository;
 import com.example.demo.repository.ProductItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,13 +31,11 @@ public class ArtistController {
     @Autowired
     private ProductItemRepository productItemRepository;
 
-    // 1. GET ALL ARTISTS
     @GetMapping
     public List<Profile> getAllArtists() {
         return profileRepository.findAll();
     }
 
-    // 2. GET ARTIST BY ID
     @GetMapping("/{id}")
     public ResponseEntity<Profile> getArtistById(@PathVariable Long id) {
         return profileRepository.findById(id)
@@ -36,17 +43,15 @@ public class ArtistController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. GET WORKS BY ARTIST ID
     @GetMapping("/{id}/works")
     public List<ProductItem> getArtistWorks(@PathVariable Long id) {
         return productItemRepository.findByPhotographerIdAndPublishedTrueOrderByPublishedAtDesc(id);
     }
 
-    // 4. POST - THÊM MỚI (ĐÃ ĐỒNG BỘ THEO BIẾN USER_ID CỦA ENTITY 🛠️)
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createPhotographer(@RequestBody Profile profile) {
         try {
-            // Giải pháp gán ID thủ công phòng tránh lỗi Identifier must be manually assigned
             if (profile.getUserId() == null) {
                 Long maxId = profileRepository.findAll().stream()
                         .map(p -> p.getUserId() != null ? p.getUserId() : 0L)
@@ -55,7 +60,6 @@ public class ArtistController {
                 profile.setUserId(maxId + 1);
             }
 
-            // Điền giá trị mặc định cho các cột số để dữ liệu lưu xuống DB trông đẹp hơn
             if (profile.getExperienceYears() == null) profile.setExperienceYears(3);
             if (profile.getRating() == null) profile.setRating(new BigDecimal("5.0"));
             if (profile.getReviewCount() == null) profile.setReviewCount(0);
@@ -64,12 +68,12 @@ public class ArtistController {
             return ResponseEntity.ok(savedProfile);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body("Lỗi hệ thống: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Loi he thong: " + e.getMessage());
         }
     }
 
-    // 5. PUT - CẬP NHẬT THEO USER_ID
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updatePhotographer(@PathVariable Long id, @RequestBody Profile profileDetails) {
         return profileRepository.findById(id)
                 .map(existingProfile -> {
@@ -83,8 +87,8 @@ public class ArtistController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 6. DELETE - XÓA THEO USER_ID
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deletePhotographer(@PathVariable Long id) {
         return profileRepository.findById(id)
                 .map(profile -> {

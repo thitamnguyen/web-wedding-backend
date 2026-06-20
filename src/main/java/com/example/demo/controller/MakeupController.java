@@ -6,7 +6,16 @@ import com.example.demo.repository.MakeupArtistRepository;
 import com.example.demo.repository.ProductItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -21,13 +30,11 @@ public class MakeupController {
     @Autowired
     private ProductItemRepository productItemRepository;
 
-    // 1. LẤY DANH SÁCH (GET)
     @GetMapping
     public List<MakeupArtist> getAllMakeupArtists() {
         return makeupArtistRepository.findAll();
     }
 
-    // 2. LẤY THEO ID (GET)
     @GetMapping("/{id}")
     public ResponseEntity<MakeupArtist> getMakeupArtistById(@PathVariable Long id) {
         return makeupArtistRepository.findById(id)
@@ -35,14 +42,13 @@ public class MakeupController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. LẤY SẢN PHẨM ĐÃ LÀM (GET)
     @GetMapping("/{id}/works")
     public List<ProductItem> getMakeupArtistWorks(@PathVariable Long id) {
         return productItemRepository.findByMakeupArtistIdAndPublishedTrueOrderByPublishedAtDesc(id);
     }
 
-    // 4. CHỨC NĂNG THÊM MỚI (POST)
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MakeupArtist> createMakeupArtist(@RequestBody MakeupArtist artist) {
         try {
             MakeupArtist savedArtist = makeupArtistRepository.save(artist);
@@ -52,27 +58,21 @@ public class MakeupController {
         }
     }
 
-    // 5. CHỨC NĂNG SỬA (PUT) - ĐÃ HẾT LỖI BIÊN DỊCH 🔴
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MakeupArtist> updateMakeupArtist(@PathVariable Long id, @RequestBody MakeupArtist artistDetails) {
         return makeupArtistRepository.findById(id)
                 .map(existingArtist -> {
-                    // Sử dụng chuẩn camelCase để map chính xác với Getter/Setter của Java Entity
                     existingArtist.setFullName(artistDetails.getFullName());
                     existingArtist.setJobTitle(artistDetails.getJobTitle());
                     existingArtist.setAvatarUrl(artistDetails.getAvatarUrl());
-
-                    // Nếu trong Model MakeupArtist của em có trường phone, hãy giữ dòng dưới. Ngược lại thì xóa đi.
-                    // existingArtist.setPhone(artistDetails.getPhone());
-
-                    MakeupArtist updatedArtist = makeupArtistRepository.save(existingArtist);
-                    return ResponseEntity.ok(updatedArtist);
+                    return ResponseEntity.ok(makeupArtistRepository.save(existingArtist));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 6. CHỨC NĂNG XÓA (DELETE)
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteMakeupArtist(@PathVariable Long id) {
         return makeupArtistRepository.findById(id)
                 .map(artist -> {
