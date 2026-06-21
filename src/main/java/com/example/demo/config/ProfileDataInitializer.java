@@ -44,6 +44,9 @@ public class ProfileDataInitializer implements CommandLineRunner {
             if (profile.getFeaturedWork() == null || profile.getFeaturedWork().isBlank()) {
                 profile.setFeaturedWork(defaultFeaturedWork(i));
             }
+            if (profile.getTotalRevenue() == null) {
+                profile.setTotalRevenue(BigDecimal.ZERO);
+            }
         }
 
         profileRepository.saveAll(profiles);
@@ -69,6 +72,7 @@ public class ProfileDataInitializer implements CommandLineRunner {
         profile.setRating(rating);
         profile.setReviewCount(reviewCount);
         profile.setFeaturedWork(featuredWork);
+        profile.setTotalRevenue(BigDecimal.ZERO);
         return profile;
     }
 

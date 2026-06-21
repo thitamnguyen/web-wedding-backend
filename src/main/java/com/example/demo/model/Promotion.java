@@ -1,9 +1,17 @@
 package com.example.demo.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Transient;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "promotions")
@@ -13,11 +21,27 @@ public class Promotion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;            // Ví dụ: "Ưu đãi mùa cưới Tháng 6"
-    private String description;     // Ví dụ: "Giảm giá trực tiếp cho toàn bộ các gói combo"
+    @Column(unique = true)
+    private String code;
+
+    private String name;
+    private String description;
     private Double discountPercentage;
     private LocalDate startDate;
     private LocalDate endDate;
-    private String promotionType;   // "ALL" (tất cả), "PACKAGE" (chỉ một số gói)
+    private String promotionType;   // ALL / PACKAGE
     private Boolean active;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Transient
+    private Boolean usedByUser = false;
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

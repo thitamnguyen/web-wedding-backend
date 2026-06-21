@@ -34,4 +34,7 @@ public class Profile {
 
     @Column(name = "featured_work")
     private String featuredWork;
+
+    @Column(name = "total_revenue", precision = 14, scale = 2)
+    private BigDecimal totalRevenue = BigDecimal.ZERO;
 }

@@ -34,11 +34,26 @@ public class Booking {
     @Column(name = "booking_date", nullable = false)
     private LocalDate bookingDate;
 
+    @Column(name = "fitting_date")
+    private LocalDate fittingDate;
+
     @Column(columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "total_price")
     private Double totalPrice = 0.0;
+
+    @Column(name = "discount_percentage")
+    private Double discountPercentage = 0.0;
+
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
+
+    @Column(name = "promotion_code")
+    private String promotionCode;
+
+    @Column(name = "promotion_name")
+    private String promotionName;
 
     @Column(name = "payment_status")
     private String paymentStatus = "UNPAID";

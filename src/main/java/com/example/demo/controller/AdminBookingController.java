@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
 import com.example.demo.model.Booking;
-import com.example.demo.repository.BookingRepository;
 import com.example.demo.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin/bookings")
@@ -31,30 +29,23 @@ public class AdminBookingController {
     @Autowired
     private BookingService bookingService;
 
-    @Autowired
-    private BookingRepository bookingRepository;
-
     @GetMapping
     public ResponseEntity<List<Booking>> getAllBookings() {
-        List<Booking> bookings = bookingRepository.findAll();
-        return ResponseEntity.ok(bookings);
+        return ResponseEntity.ok(bookingService.getAllBookings());
     }
 
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
-        Optional<Booking> bookingOpt = bookingRepository.findById(id);
-
-        if (bookingOpt.isPresent()) {
-            Booking booking = bookingOpt.get();
+        try {
             String newStatus = request.get("status");
-
-            booking.setStatus(newStatus);
-            bookingRepository.save(booking);
-
-            return ResponseEntity.ok(Map.of("message", "Cap nhat trang thai lich hen thanh cong!"));
+            Booking updatedBooking = bookingService.updateStatus(id, newStatus);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Cap nhat trang thai lich hen thanh cong!",
+                    "booking", updatedBooking
+            ));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", ex.getMessage()));
         }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Khong tim thay lich dat!"));
     }
 
     @GetMapping("/list")
