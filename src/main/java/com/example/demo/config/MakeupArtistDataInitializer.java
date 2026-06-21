@@ -8,6 +8,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,6 +85,7 @@ public class MakeupArtistDataInitializer implements CommandLineRunner {
         artist.setAward(award);
         artist.setSpecialty(specialty);
         artist.setDescription(description);
+        artist.setTotalRevenue(BigDecimal.ZERO);
 
         List<MakeupPortfolio> portfolios = new ArrayList<>();
         portfolios.add(createPortfolio("https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1200&auto=format&fit=crop", "Soft Bridal Glow"));
@@ -116,6 +118,10 @@ public class MakeupArtistDataInitializer implements CommandLineRunner {
         }
         if (artist.getDescription() == null || artist.getDescription().isBlank()) {
             artist.setDescription(defaultDescription(index));
+            changed = true;
+        }
+        if (artist.getTotalRevenue() == null) {
+            artist.setTotalRevenue(BigDecimal.ZERO);
             changed = true;
         }
         if (artist.getPortfolios() == null || artist.getPortfolios().isEmpty()) {

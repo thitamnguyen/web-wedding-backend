@@ -38,6 +38,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserIdOrderByBookingDateDesc(Long userId);
 
+    List<Booking> findByUserIdAndPromotionCodeIsNotNull(Long userId);
+
     List<Booking> findByPhotographerIdAndStatus(Long photographerId, String status);
 
     List<Booking> findByPhotographerIdOrderByBookingDateDesc(Long photographerId);

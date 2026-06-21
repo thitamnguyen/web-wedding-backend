@@ -1,5 +1,7 @@
 package com.example.demo.dto;
 
+import java.math.BigDecimal;
+
 public record StaffProfileDto(
         Long id,
         String fullName,
@@ -12,6 +14,7 @@ public record StaffProfileDto(
         Double rating,
         Integer reviewCount,
         String featuredWork,
+        BigDecimal totalRevenue,
         String staffType
 ) {
 }

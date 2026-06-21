@@ -1,20 +1,24 @@
 package com.example.demo.service;
 
 import com.example.demo.model.Booking;
-import com.example.demo.model.WeddingService;
 import com.example.demo.model.Profile;
+import com.example.demo.model.Promotion;
+import com.example.demo.model.WeddingService;
 import com.example.demo.repository.BookingRepository;
-import com.example.demo.repository.ServiceRepository;
 import com.example.demo.repository.MakeupArtistRepository;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.repository.ServiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,35 +41,16 @@ public class BookingService {
     @Autowired
     private EmailService emailService;
 
-    /**
-     * 1. TẠO ĐƠN MỚI: Trạng thái ban đầu bắt buộc phải là PENDING và UNPAID để hiện mã QR cọc!
-     */
+    @Autowired
+    private PromotionService promotionService;
+
     public Booking createBooking(Booking booking) {
-        // Kiểm tra trùng lịch chụp của Photographer
-        if (booking.getPhotographerId() != null && booking.getBookingDate() != null) {
-            boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
-                    booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
-            );
-            if (isPhotoBusy) {
-                throw new RuntimeException("Nhiếp ảnh gia này đã có lịch chụp vào ngày " + booking.getBookingDate() + " rồi! Vui lòng chọn ngày khác.");
-            }
-        }
+        validateBookingDates(booking);
+        validateStaffAvailability(booking);
 
-        // Kiểm tra trùng lịch làm việc của Makeup Artist
-        if (booking.getMakeupArtistId() != null && booking.getBookingDate() != null) {
-            boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
-                    booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
-            );
-            if (isMakeupBusy) {
-                throw new RuntimeException("Chuyên gia Makeup này đã có lịch trang điểm vào ngày " + booking.getBookingDate() + " rồi! Vui lòng chọn người khác.");
-            }
-        }
-
-        // 🌟 THAY ĐỔI GỐC: Đơn mới đặt ở trạng thái chờ duyệt cọc
         booking.setStatus("PENDING");
         booking.setPaymentStatus("UNPAID");
 
-        // Trích xuất tự động giá tiền từ gói WeddingService
         try {
             if (booking.getServiceId() != null) {
                 WeddingService selectedService = serviceRepository.findById(booking.getServiceId()).orElse(null);
@@ -81,71 +66,169 @@ public class BookingService {
             }
         } catch (Exception e) {
             booking.setTotalPrice(0.0);
-            System.err.println("❌ Lỗi trích xuất giá dịch vụ: " + e.getMessage());
+            System.err.println("Error extracting service price: " + e.getMessage());
         }
+
+        applyPromotionIfAny(booking);
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Tự động kích hoạt gửi Email thông báo kèm thông tin hướng dẫn đặt cọc
         try {
             if (savedBooking.getCustomerEmail() != null && !savedBooking.getCustomerEmail().isEmpty()) {
                 emailService.sendBookingConfirmationEmail(savedBooking);
             }
         } catch (Exception e) {
-            System.err.println("❌ Lỗi gửi email tự động: " + e.getMessage());
+            System.err.println("Error sending auto email: " + e.getMessage());
         }
 
         return savedBooking;
+    }
+
+    private void validateBookingDates(Booking booking) {
+        LocalDate today = LocalDate.now();
+        LocalDate bookingDate = booking.getBookingDate();
+        LocalDate fittingDate = booking.getFittingDate();
+
+        if (bookingDate == null) {
+            throw new RuntimeException("Vui long chon ngay to chuc / chup chinh.");
+        }
+
+        if (!bookingDate.isAfter(today)) {
+            throw new RuntimeException("Ngay to chuc / chup chinh phai lon hon ngay hien tai.");
+        }
+
+        if (fittingDate != null && !bookingDate.isAfter(fittingDate)) {
+            throw new RuntimeException("Ngay to chuc / chup chinh phai lon hon ngay hen thu vay.");
+        }
+    }
+
+    private void validateStaffAvailability(Booking booking) {
+        LocalDate bookingDate = booking.getBookingDate();
+        if (bookingDate == null) {
+            return;
+        }
+
+        if (booking.getPhotographerId() != null
+                && bookingRepository.findBusyDatesForPhotographer(booking.getPhotographerId()).contains(bookingDate)) {
+            throw new RuntimeException("Nhiếp ảnh gia da co lich vao ngay " + bookingDate + ". Vui long doi tho hoac de web tu sap xep.");
+        }
+
+        if (booking.getMakeupArtistId() != null
+                && bookingRepository.findBusyDatesForMakeupArtist(booking.getMakeupArtistId()).contains(bookingDate)) {
+            throw new RuntimeException("Tho makeup da co lich vao ngay " + bookingDate + ". Vui long doi tho hoac de web tu sap xep.");
+        }
+    }
+
+    private void applyPromotionIfAny(Booking booking) {
+        if (booking.getPromotionCode() == null || booking.getPromotionCode().isBlank()) {
+            booking.setDiscountPercentage(0.0);
+            booking.setDiscountAmount(0.0);
+            booking.setPromotionName(null);
+            return;
+        }
+
+        Promotion promotion = promotionService.findPromotionByCode(booking.getPromotionCode()).orElse(null);
+        if (promotion == null) {
+            throw new RuntimeException("Ma uu dai khong hop le hoac da het han");
+        }
+
+        if (promotionService.isPromotionUsedByUser(booking.getUserId(), promotion)) {
+            throw new RuntimeException("Uu dai nay da duoc su dung roi.");
+        }
+
+        double basePrice = booking.getTotalPrice() != null ? booking.getTotalPrice() : 0.0;
+        double discountPercentage = promotion.getDiscountPercentage() != null ? promotion.getDiscountPercentage() : 0.0;
+        double discountAmount = basePrice * (discountPercentage / 100.0);
+        double finalPrice = Math.max(0.0, basePrice - discountAmount);
+
+        booking.setDiscountPercentage(discountPercentage);
+        booking.setDiscountAmount(discountAmount);
+        booking.setPromotionName(promotion.getName());
+        booking.setPromotionCode(promotion.getCode() != null && !promotion.getCode().isBlank() ? promotion.getCode() : booking.getPromotionCode());
+        booking.setTotalPrice(finalPrice);
     }
 
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
 
-    /**
-     * 2. CẬP NHẬT TRẠNG THÁI & ĐỒNG BỘ LUỒNG TIỀN THEO HÀNH ĐỘNG CỦA ADMIN
-     */
+    @Transactional
     public Booking updateStatus(Long id, String newStatus) {
         Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt lịch với ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Khong tim thay don dat lich voi ID: " + id));
 
-        String upperStatus = newStatus.toUpperCase();
+        String previousStatus = booking.getStatus();
+        String upperStatus = newStatus == null ? "" : newStatus.toUpperCase();
+        boolean wasCompletedBefore = isCompletedStatus(previousStatus);
 
-        // Kịch bản 1: Xác nhận đã nhận tiền cọc thành công
         if ("CONFIRMED".equals(upperStatus)) {
-            // Kiểm tra lại trùng lịch một lần nữa trước khi chốt giữ chỗ chính thức
             if (booking.getPhotographerId() != null) {
                 boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
                         booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
                 );
                 if (isPhotoBusy) {
-                    throw new RuntimeException("🚨 Thợ ảnh đã bị trùng lịch chụp ngày " + booking.getBookingDate() + "!");
+                    throw new RuntimeException("Tho anh da bi trung lich chup ngay " + booking.getBookingDate() + "!");
                 }
             }
             booking.setStatus("CONFIRMED");
-            booking.setPaymentStatus("DEPOSITED"); // Cập nhật trạng thái Đã Cọc
-        }
-        // Kịch bản 2: Hoàn thành buổi chụp, thu đủ 100% tiền đơn hàng
-        else if ("DONE".equals(upperStatus) || "COMPLETED".equals(upperStatus)) {
+            booking.setPaymentStatus("DEPOSITED");
+        } else if ("DONE".equals(upperStatus) || "COMPLETED".equals(upperStatus)) {
             booking.setStatus("DONE");
-            booking.setPaymentStatus("PAID"); // Cập nhật trạng thái Đã thanh toán 100%
-        }
-        // Kịch bản 3: Hủy lịch hẹn
-        else if ("CANCELLED".equals(upperStatus)) {
+            booking.setPaymentStatus("PAID");
+        } else if ("CANCELLED".equals(upperStatus)) {
             booking.setStatus("CANCELLED");
             booking.setPaymentStatus("REFUNDED_OR_VOID");
-        }
-        // Mặc định cho các trạng thái khác
-        else {
+        } else {
             booking.setStatus(upperStatus);
         }
 
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        if (!wasCompletedBefore && isCompletedStatus(savedBooking.getStatus())) {
+            addRevenueToStaff(savedBooking);
+        }
+        return savedBooking;
     }
 
-    /**
-     * 3. THỐNG KÊ DASHBOARD GỐC - Đồng bộ hóa số liệu trùng khớp 100% với báo cáo tài chính mới
-     */
+    private boolean isCompletedStatus(String status) {
+        if (status == null) {
+            return false;
+        }
+        String normalized = status.trim().toUpperCase();
+        return "DONE".equals(normalized) || "COMPLETED".equals(normalized);
+    }
+
+    private void addRevenueToStaff(Booking booking) {
+        BigDecimal revenue = BigDecimal.valueOf(booking.getTotalPrice() != null ? booking.getTotalPrice() : 0.0);
+        if (revenue.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        boolean hasPhotographer = booking.getPhotographerId() != null;
+        boolean hasMakeup = booking.getMakeupArtistId() != null;
+        int participantCount = (hasPhotographer ? 1 : 0) + (hasMakeup ? 1 : 0);
+        if (participantCount == 0) {
+            return;
+        }
+
+        BigDecimal share = revenue.divide(BigDecimal.valueOf(participantCount), 2, RoundingMode.HALF_UP);
+
+        if (hasPhotographer) {
+            profileRepository.findById(booking.getPhotographerId()).ifPresent(profile -> {
+                BigDecimal current = profile.getTotalRevenue() != null ? profile.getTotalRevenue() : BigDecimal.ZERO;
+                profile.setTotalRevenue(current.add(share));
+                profileRepository.save(profile);
+            });
+        }
+
+        if (hasMakeup) {
+            makeupArtistRepository.findById(booking.getMakeupArtistId()).ifPresent(artist -> {
+                BigDecimal current = artist.getTotalRevenue() != null ? artist.getTotalRevenue() : BigDecimal.ZERO;
+                artist.setTotalRevenue(current.add(share));
+                makeupArtistRepository.save(artist);
+            });
+        }
+    }
+
     public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
 
@@ -154,7 +237,6 @@ public class BookingService {
         long doneCount = bookingRepository.countByStatus("DONE") + bookingRepository.countByStatus("COMPLETED");
         long cancelledCount = bookingRepository.countByStatus("CANCELLED");
 
-        // Gọi logic tính toán chính thống từ hàm tài chính để đồng bộ số liệu hiển thị
         Map<String, BigDecimal> financeReport = getRevenueReportData();
 
         stats.put("totalBookings", bookingRepository.count());
@@ -162,26 +244,21 @@ public class BookingService {
         stats.put("confirmedBookings", confirmedCount);
         stats.put("doneBookings", doneCount);
         stats.put("cancelledBookings", cancelledCount);
-        stats.put("totalRevenue", financeReport.get("actualRevenue").doubleValue()); // Doanh thu thực
-        stats.put("totalCashFlow", financeReport.get("totalCashFlow").doubleValue()); // Quỹ két tiền mặt
+        stats.put("totalRevenue", financeReport.get("actualRevenue").doubleValue());
+        stats.put("totalCashFlow", financeReport.get("totalCashFlow").doubleValue());
 
         return stats;
     }
 
-    /**
-     * 4. HÀM TÍNH TOÁN BÁO CÁO DOANH THU & DÒNG TIỀN CHUẨN THỰC TẾ CHUYÊN NGHIỆP
-     */
     public Map<String, BigDecimal> getRevenueReportData() {
         List<Booking> allBookings = bookingRepository.findAll();
 
-        // 1. DOANH THU CHỐT SỔ: Chỉ tính khi đơn hàng đã đạt trạng thái DONE hoặc COMPLETED
         double actualRevenue = allBookings.stream()
                 .filter(b -> b.getTotalPrice() != null)
                 .filter(b -> "DONE".equalsIgnoreCase(b.getStatus()) || "COMPLETED".equalsIgnoreCase(b.getStatus()))
                 .mapToDouble(Booking::getTotalPrice)
                 .sum();
 
-        // 2. TỔNG QUỸ TIỀN MẶT (KÉT): Tính đúng số tiền thực tế đang nằm trong ví doanh nghiệp
         double totalCashFlow = allBookings.stream()
                 .filter(b -> b.getTotalPrice() != null)
                 .mapToDouble(b -> {
@@ -189,13 +266,11 @@ public class BookingService {
                     String status = b.getStatus() != null ? b.getStatus().toUpperCase() : "";
                     String payment = b.getPaymentStatus() != null ? b.getPaymentStatus().toUpperCase() : "";
 
-                    // Đã thanh toán 100% hoặc đã chụp xong hoàn thành đơn
                     if (status.equals("DONE") || status.equals("COMPLETED") || payment.equals("PAID")) {
                         return price;
                     }
-                    // Đơn đang giữ lịch chờ chụp nhưng đã được Admin duyệt nhận cọc thành công
                     if (payment.equals("DEPOSITED") || status.equals("CONFIRMED")) {
-                        return price * 0.2; // Ghi nhận dòng tiền 20% cọc thực thu
+                        return price * 0.2;
                     }
                     return 0.0;
                 })
@@ -207,11 +282,21 @@ public class BookingService {
         return report;
     }
 
-    // --- Giữ nguyên các hàm bổ trợ hệ thống của em ---
-    public List<?> getMockWeddingServices() { return serviceRepository.findAll(); }
-    public List<Profile> getMockPhotographers() { return profileRepository.findAll(); }
-    public List<?> getMockMakeupArtists() { return makeupArtistRepository.findAll(); }
-    public List<Booking> trackBookingByPhone(String phone) { return bookingRepository.findByCustomerPhoneOrderByBookingDateDesc(phone); }
+    public List<?> getMockWeddingServices() {
+        return serviceRepository.findAll();
+    }
+
+    public List<Profile> getMockPhotographers() {
+        return profileRepository.findAll();
+    }
+
+    public List<?> getMockMakeupArtists() {
+        return makeupArtistRepository.findAll();
+    }
+
+    public List<Booking> trackBookingByPhone(String phone) {
+        return bookingRepository.findByCustomerPhoneOrderByBookingDateDesc(phone);
+    }
 
     public Page<Booking> getBookingsWithFilter(String status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
@@ -221,6 +306,11 @@ public class BookingService {
         return bookingRepository.findByStatus(status, pageable);
     }
 
-    public List<java.time.LocalDate> getPhotographerBusyDates(Long photographerId) { return bookingRepository.findBusyDatesForPhotographer(photographerId); }
-    public List<java.time.LocalDate> getMakeupArtistBusyDates(Long makeupArtistId) { return bookingRepository.findBusyDatesForMakeupArtist(makeupArtistId); }
+    public List<LocalDate> getPhotographerBusyDates(Long photographerId) {
+        return bookingRepository.findBusyDatesForPhotographer(photographerId);
+    }
+
+    public List<LocalDate> getMakeupArtistBusyDates(Long makeupArtistId) {
+        return bookingRepository.findBusyDatesForMakeupArtist(makeupArtistId);
+    }
 }
