@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -206,6 +207,7 @@ public class StaffService {
                     profile != null && profile.getRating() != null ? profile.getRating().doubleValue() : null,
                     profile != null ? profile.getReviewCount() : null,
                     profile != null ? profile.getFeaturedWork() : null,
+                    profile != null && profile.getTotalRevenue() != null ? profile.getTotalRevenue() : BigDecimal.ZERO,
                     "PHOTOGRAPHER"
             );
         }
@@ -224,6 +226,7 @@ public class StaffService {
                     null,
                     null,
                     null,
+                    artist != null && artist.getTotalRevenue() != null ? artist.getTotalRevenue() : BigDecimal.ZERO,
                     "MAKEUP"
             );
         }
@@ -240,6 +243,7 @@ public class StaffService {
                 null,
                 null,
                 null,
+                BigDecimal.ZERO,
                 "STAFF"
         );
     }
