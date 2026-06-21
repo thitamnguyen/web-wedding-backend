@@ -76,4 +76,5 @@ public class WeddingService {
     public void setDetailedDescription(String detailedDescription) {
         this.detailedDescription = detailedDescription;
     }
+
 }

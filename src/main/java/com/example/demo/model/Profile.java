@@ -37,4 +37,84 @@ public class Profile {
 
     @Column(name = "total_revenue", precision = 14, scale = 2)
     private BigDecimal totalRevenue = BigDecimal.ZERO;
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getJobTitle() {
+        return jobTitle;
+    }
+
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+
+    public String getStyle() {
+        return style;
+    }
+
+    public void setStyle(String style) {
+        this.style = style;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public Integer getExperienceYears() {
+        return experienceYears;
+    }
+
+    public void setExperienceYears(Integer experienceYears) {
+        this.experienceYears = experienceYears;
+    }
+
+    public BigDecimal getRating() {
+        return rating;
+    }
+
+    public void setRating(BigDecimal rating) {
+        this.rating = rating;
+    }
+
+    public Integer getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(Integer reviewCount) {
+        this.reviewCount = reviewCount;
+    }
+
+    public String getFeaturedWork() {
+        return featuredWork;
+    }
+
+    public void setFeaturedWork(String featuredWork) {
+        this.featuredWork = featuredWork;
+    }
+
+    public BigDecimal getTotalRevenue() {
+        return totalRevenue;
+    }
+
+    public void setTotalRevenue(BigDecimal totalRevenue) {
+        this.totalRevenue = totalRevenue;
+    }
 }
