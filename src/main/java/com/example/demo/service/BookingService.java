@@ -15,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,62 +41,73 @@ public class BookingService {
     /**
      * 1. TẠO ĐƠN MỚI: Trạng thái ban đầu bắt buộc phải là PENDING và UNPAID để hiện mã QR cọc!
      */
+    /**
+     * 1. TẠO ĐƠN MỚI: Tự động bóc tách số từ chuỗi priceRange để tính tiền cọc QR
+     */
     public Booking createBooking(Booking booking) {
-        // Kiểm tra trùng lịch chụp của Photographer
-        if (booking.getPhotographerId() != null && booking.getBookingDate() != null) {
-            boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
-                    booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
-            );
-            if (isPhotoBusy) {
-                throw new RuntimeException("Nhiếp ảnh gia này đã có lịch chụp vào ngày " + booking.getBookingDate() + " rồi! Vui lòng chọn ngày khác.");
-            }
-        }
+        // --- VÁ LỖI BÓC TÁCH GIÁ TIỀN TỪ CHUỖI PRICERANGE ---
+        if (booking.getServiceId() != null) {
+            WeddingService service = serviceRepository.findById(booking.getServiceId()).orElse(null);
+            if (service != null && service.getPriceRange() != null) {
+                try {
+                    // Lấy chuỗi priceRange (Ví dụ: "5.000.000 - 8.000.000")
+                    String rawPrice = service.getPriceRange();
 
-        // Kiểm tra trùng lịch làm việc của Makeup Artist
-        if (booking.getMakeupArtistId() != null && booking.getBookingDate() != null) {
-            boolean isMakeupBusy = bookingRepository.existsByMakeupArtistIdAndBookingDateAndStatus(
-                    booking.getMakeupArtistId(), booking.getBookingDate(), "CONFIRMED"
-            );
-            if (isMakeupBusy) {
-                throw new RuntimeException("Chuyên gia Makeup này đã có lịch trang điểm vào ngày " + booking.getBookingDate() + " rồi! Vui lòng chọn người khác.");
-            }
-        }
-
-        // 🌟 THAY ĐỔI GỐC: Đơn mới đặt ở trạng thái chờ duyệt cọc
-        booking.setStatus("PENDING");
-        booking.setPaymentStatus("UNPAID");
-
-        // Trích xuất tự động giá tiền từ gói WeddingService
-        try {
-            if (booking.getServiceId() != null) {
-                WeddingService selectedService = serviceRepository.findById(booking.getServiceId()).orElse(null);
-                if (selectedService != null) {
-                    String rawPrice = selectedService.getPriceRange();
-                    if (rawPrice != null && !rawPrice.trim().isEmpty()) {
-                        String cleanPriceStr = rawPrice.replaceAll("[^0-9]", "");
-                        if (!cleanPriceStr.isEmpty()) {
-                            booking.setTotalPrice(Double.parseDouble(cleanPriceStr));
-                        }
+                    // Nếu chuỗi chứa dấu gạch ngang (khoảng giá), ta lấy con số đầu tiên làm mốc tính
+                    if (rawPrice.contains("-")) {
+                        rawPrice = rawPrice.split("-")[0];
                     }
+
+                    // Xóa sạch các ký tự chữ, dấu chấm, dấu phẩy, chữ đ... chỉ giữ lại các mắt số thô
+                    String cleanPrice = rawPrice.replaceAll("[^0-9]", "");
+
+                    if (!cleanPrice.isEmpty()) {
+                        // Chuyển chuỗi số thô thành kiểu số Double để tính toán tiền cọc
+                        booking.setTotalPrice(Double.parseDouble(cleanPrice));
+                    }
+                } catch (Exception e) {
+                    System.out.println("Không thể bóc tách số từ priceRange: " + e.getMessage());
+                    booking.setTotalPrice(0.0);
                 }
             }
-        } catch (Exception e) {
+        }
+
+        // Đảm bảo tổng tiền không bị null hoặc âm
+        if (booking.getTotalPrice() == null || booking.getTotalPrice() <= 0) {
             booking.setTotalPrice(0.0);
-            System.err.println("❌ Lỗi trích xuất giá dịch vụ: " + e.getMessage());
         }
 
-        Booking savedBooking = bookingRepository.save(booking);
+        // 2. Tự động tính toán tiền cọc (20%) và tiền còn lại (80%) từ con số bóc tách được
+        double deposit = booking.getTotalPrice() * 0.2;
+        double remaining = booking.getTotalPrice() - deposit;
+        booking.setDepositAmount(deposit);
+        booking.setRemainingAmount(remaining);
 
-        // Tự động kích hoạt gửi Email thông báo kèm thông tin hướng dẫn đặt cọc
+        // 3. Phân luồng dựa trên lựa chọn hình thức của khách hàng từ Frontend gửi lên
+        if ("CASH".equalsIgnoreCase(booking.getPaymentMethod())) {
+            booking.setStatus("PENDING");
+            booking.setPaymentStatus("UNPAID");
+            booking.setDepositMethod("MANUAL_CASH");
+        } else {
+            booking.setStatus("PENDING");
+            booking.setPaymentStatus("UNPAID");
+            booking.setDepositMethod("AUTO_SEPAY");
+        }
+
+        booking.setCreatedAt(LocalDateTime.now());
+        booking.setIsRead(false);
+
+        // 4. Lưu vào Database
+        Booking saved = bookingRepository.save(booking);
+
+        // 5. Gửi email xác nhận
         try {
-            if (savedBooking.getCustomerEmail() != null && !savedBooking.getCustomerEmail().isEmpty()) {
-                emailService.sendBookingConfirmationEmail(savedBooking);
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Lỗi gửi email tự động: " + e.getMessage());
+            emailService.sendBookingConfirmationEmail(saved);
+        } catch(Exception e) {
+            System.out.println("Lỗi gửi email: " + e.getMessage());
         }
 
-        return savedBooking;
+        return saved;
     }
 
     public List<Booking> getAllBookings() {
