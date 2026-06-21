@@ -62,9 +62,15 @@ public class BookingService {
                             booking.setTotalPrice(Double.parseDouble(cleanPriceStr));
                         }
                     }
+                } catch (Exception e) {
+                    System.out.println("Không thể bóc tách số từ priceRange: " + e.getMessage());
+                    booking.setTotalPrice(0.0);
                 }
             }
-        } catch (Exception e) {
+        }
+
+        // Đảm bảo tổng tiền không bị null hoặc âm
+        if (booking.getTotalPrice() == null || booking.getTotalPrice() <= 0) {
             booking.setTotalPrice(0.0);
             System.err.println("Error extracting service price: " + e.getMessage());
         }
@@ -81,7 +87,7 @@ public class BookingService {
             System.err.println("Error sending auto email: " + e.getMessage());
         }
 
-        return savedBooking;
+        return saved;
     }
 
     private void validateBookingDates(Booking booking) {

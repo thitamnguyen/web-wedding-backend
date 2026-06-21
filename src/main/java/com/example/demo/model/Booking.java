@@ -60,6 +60,19 @@ public class Booking {
 
     private String status = "PENDING";
 
+    //code sepay
+    @Column(name = "payment_method")
+    private String paymentMethod; // "CASH" (Tiền mặt), "BANK_TRANSFER" (Chuyển khoản)
+
+    @Column(name = "deposit_amount")
+    private Double depositAmount = 0.0; // Số tiền cọc cần thu (20% giá trị gói)
+
+    @Column(name = "remaining_amount")
+    private Double remainingAmount = 0.0; // Số tiền còn lại phải thu sau này (80%)
+
+    @Column(name = "deposit_method")
+    private String depositMethod; // "AUTO_SEPAY", "MANUAL_CASH", "MANUAL_BANK"
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
