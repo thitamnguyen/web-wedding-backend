@@ -61,6 +61,7 @@ public class ServiceCategoryService {
         ServicePackageResponse response =
                 new ServicePackageResponse();
 
+        response.setId(servicePackage.getId());
         response.setName(servicePackage.getName());
 
         NumberFormat vn =
@@ -68,7 +69,6 @@ public class ServiceCategoryService {
                         new Locale("vi", "VN")
                 );
 
-        // QUAN TRỌNG: Thêm trường này vào DTO của em (Nhớ bảo kỹ thuật thêm thuộc tính Double rawPrice vào file ServicePackageResponse.java nhé)
         response.setRawPrice(servicePackage.getPrice());
 
         response.setPrice(

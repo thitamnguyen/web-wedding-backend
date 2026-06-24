@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 @Entity
@@ -41,6 +42,9 @@ public class User {
 
     @Column(name = "updated_at")
     private Timestamp updatedAt;
+
+    @Column(name = "real_profit", precision = 14, scale = 2)
+    private BigDecimal realProfit = BigDecimal.ZERO;
 
     public Long getId() {
         return id;
@@ -139,5 +143,13 @@ public class User {
 
     public void setUpdatedAt(Timestamp updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public BigDecimal getRealProfit() {
+        return realProfit;
+    }
+
+    public void setRealProfit(BigDecimal realProfit) {
+        this.realProfit = realProfit;
     }
 }

@@ -313,7 +313,7 @@ public class StaffService {
     private StaffScheduleDto toScheduleDto(Booking booking) {
         double totalPrice = booking.getTotalPrice() != null ? booking.getTotalPrice() : 0.0;
         double deposit = Math.round(totalPrice * 0.2d);
-        String serviceTitle = booking.getWeddingService() != null ? booking.getWeddingService().getTitle() : "Gói dịch vụ cưới";
+        String serviceTitle = booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Gói dịch vụ cưới";
 
         return new StaffScheduleDto(
                 booking.getId(),

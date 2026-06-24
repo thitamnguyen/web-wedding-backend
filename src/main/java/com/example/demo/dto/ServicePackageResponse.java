@@ -5,13 +5,23 @@ import lombok.Data;
 @Data
 public class ServicePackageResponse {
 
+    private Integer id;
     private String name;
     private String price;
+    private Double rawPrice;
     private String outfits;
     private String makeup;
     private String duration;
     private String team;
     private String products;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
@@ -27,6 +37,14 @@ public class ServicePackageResponse {
 
     public void setPrice(String price) {
         this.price = price;
+    }
+
+    public Double getRawPrice() {
+        return rawPrice;
+    }
+
+    public void setRawPrice(Double rawPrice) {
+        this.rawPrice = rawPrice;
     }
 
     public String getOutfits() {
@@ -67,9 +85,5 @@ public class ServicePackageResponse {
 
     public void setProducts(String products) {
         this.products = products;
-    }
-
-    public void setRawPrice(Double price) {
-
     }
 }

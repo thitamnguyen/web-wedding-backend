@@ -10,7 +10,7 @@ import java.util.*;
 @Service
 public class ChatService {
 
-    private final String apiKey = "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";
+    private final String apiKey = "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";
     private final WebClient webClient = WebClient.builder().build();
 
     @Autowired

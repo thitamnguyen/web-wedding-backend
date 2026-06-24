@@ -36,6 +36,7 @@ public class ServicePackage {
 
     @ManyToOne
     @JoinColumn(name = "category_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private ServiceCategory category;
 
     public Integer getId() {

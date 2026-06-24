@@ -40,6 +40,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserIdAndPromotionCodeIsNotNull(Long userId);
 
+
     List<Booking> findByPhotographerIdAndStatus(Long photographerId, String status);
 
     List<Booking> findByPhotographerIdOrderByBookingDateDesc(Long photographerId);
@@ -55,4 +56,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Lấy danh sách các ngày bận của Thợ Makeup
     @Query("SELECT b.bookingDate FROM Booking b WHERE b.makeupArtistId = :makeupArtistId AND (b.status = 'CONFIRMED' OR b.status = 'DONE')")
     List<LocalDate> findBusyDatesForMakeupArtist(Long makeupArtistId);
+
+    // Tính tổng doanh thu tích lũy thực tế từ các show đã hoàn thành của Nhiếp ảnh gia
+    @Query("SELECT COALESCE(SUM(b.totalPrice), 0.0) FROM Booking b WHERE b.photographerId = :photographerId AND (b.status = 'DONE' OR b.status = 'COMPLETED')")
+    Double findTotalRevenueForPhotographer(Long photographerId);
+
+    // Tính tổng doanh thu tích lũy thực tế từ các show đã hoàn thành của Thợ Makeup
+    @Query("SELECT COALESCE(SUM(b.totalPrice), 0.0) FROM Booking b WHERE b.makeupArtistId = :makeupArtistId AND (b.status = 'DONE' OR b.status = 'COMPLETED')")
+    Double findTotalRevenueForMakeupArtist(Long makeupArtistId);
 }

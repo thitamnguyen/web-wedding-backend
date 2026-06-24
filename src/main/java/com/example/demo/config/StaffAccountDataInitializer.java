@@ -66,6 +66,34 @@ public class StaffAccountDataInitializer implements CommandLineRunner {
                 makeupRefId,
                 staffRole
         );
+
+        Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElse(null);
+        if (adminRole != null) {
+            ensureAdminAccount(
+                    "admin@luxeai.local",
+                    "123456",
+                    "Luxe Admin",
+                    adminRole
+            );
+        }
+    }
+
+    private void ensureAdminAccount(
+            String email,
+            String rawPassword,
+            String fullName,
+            Role adminRole
+    ) {
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElseGet(User::new);
+        user.setEmail(normalizedEmail);
+        user.setFullName(fullName);
+        user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setStatus(1);
+        user.setRole(adminRole);
+        user.setStaffType(null);
+        user.setStaffRefId(null);
+        userRepository.save(user);
     }
 
     private void ensureStaffAccount(

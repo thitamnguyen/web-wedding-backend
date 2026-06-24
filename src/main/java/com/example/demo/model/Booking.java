@@ -80,12 +80,12 @@ public class Booking {
     // CẤU HÌNH QUAN HỆ ĐỐI TƯỢNG (JOIN BẢNG) ĐỂ LẤY TÊN HIỂN THỊ
     // =========================================================================
 
-    @Column(name = "service_id")
-    private Long serviceId;
+    @Column(name = "service_package_id")
+    private Integer servicePackageId;
 
     @ManyToOne
-    @JoinColumn(name = "service_id", insertable = false, updatable = false)
-    private WeddingService weddingService; // Lấy thông tin gói dịch vụ cưới
+    @JoinColumn(name = "service_package_id", insertable = false, updatable = false)
+    private ServicePackage servicePackage; // Lấy thông tin gói dịch vụ cưới
 
     @Column(name = "photographer_id")
     private Long photographerId;
@@ -184,20 +184,20 @@ public class Booking {
         this.createdAt = createdAt;
     }
 
-    public Long getServiceId() {
-        return serviceId;
+    public Integer getServicePackageId() {
+        return servicePackageId;
     }
 
-    public void setServiceId(Long serviceId) {
-        this.serviceId = serviceId;
+    public void setServicePackageId(Integer servicePackageId) {
+        this.servicePackageId = servicePackageId;
     }
 
-    public WeddingService getWeddingService() {
-        return weddingService;
+    public ServicePackage getServicePackage() {
+        return servicePackage;
     }
 
-    public void setWeddingService(WeddingService weddingService) {
-        this.weddingService = weddingService;
+    public void setServicePackage(ServicePackage servicePackage) {
+        this.servicePackage = servicePackage;
     }
 
     public Long getPhotographerId() {
