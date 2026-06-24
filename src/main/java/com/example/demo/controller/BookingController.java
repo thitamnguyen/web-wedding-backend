@@ -47,7 +47,7 @@ public class BookingController {
             Booking savedBooking = bookingService.createBooking(booking);
             return ResponseEntity.ok(savedBooking);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Loi khi dat lich: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
@@ -102,7 +102,7 @@ public class BookingController {
             Booking updatedBooking = bookingService.updateStatus(id, status);
             return ResponseEntity.ok(updatedBooking);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Loi cap nhat trang thai: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
@@ -121,13 +121,23 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getMockMakeupArtists());
     }
 
+    @GetMapping("/busy-dates/photographer/{photographerId}")
+    public ResponseEntity<?> getBusyDatesForPhotographer(@PathVariable Long photographerId) {
+        return ResponseEntity.ok(bookingService.getPhotographerBusyDates(photographerId));
+    }
+
+    @GetMapping("/busy-dates/makeup/{makeupArtistId}")
+    public ResponseEntity<?> getBusyDatesForMakeupArtist(@PathVariable Long makeupArtistId) {
+        return ResponseEntity.ok(bookingService.getMakeupArtistBusyDates(makeupArtistId));
+    }
+
     @GetMapping("/dashboard-stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getDashboardStats() {
         try {
             return ResponseEntity.ok(bookingService.getDashboardStats());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Loi tai thong ke: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
@@ -136,7 +146,7 @@ public class BookingController {
     public ResponseEntity<?> getUnreadBookings() {
         List<Booking> unread = bookingService.getAllBookings().stream()
                 .filter(b -> b.getIsRead() == null || !b.getIsRead())
-                .collect(java.util.stream.Collectors.toList());
+                .toList();
         return ResponseEntity.ok(unread);
     }
 
@@ -151,7 +161,7 @@ public class BookingController {
             booking.setIsRead(true);
             return ResponseEntity.ok(Map.of("message", "Da ghi nhan doc thong bao thanh cong"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
@@ -167,7 +177,7 @@ public class BookingController {
             Map<String, BigDecimal> reportData = bookingService.getRevenueReportData();
             return ResponseEntity.ok(reportData);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Loi he thong khi tinh doanh thu: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 

@@ -34,11 +34,26 @@ public class Booking {
     @Column(name = "booking_date", nullable = false)
     private LocalDate bookingDate;
 
+    @Column(name = "fitting_date")
+    private LocalDate fittingDate;
+
     @Column(columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "total_price")
     private Double totalPrice = 0.0;
+
+    @Column(name = "discount_percentage")
+    private Double discountPercentage = 0.0;
+
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
+
+    @Column(name = "promotion_code")
+    private String promotionCode;
+
+    @Column(name = "promotion_name")
+    private String promotionName;
 
     @Column(name = "payment_status")
     private String paymentStatus = "UNPAID";
@@ -225,5 +240,99 @@ public class Booking {
         isRead = read;
     }
 
+    public User getUser() {
+        return user;
+    }
 
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public LocalDate getFittingDate() {
+        return fittingDate;
+    }
+
+    public void setFittingDate(LocalDate fittingDate) {
+        this.fittingDate = fittingDate;
+    }
+
+    public Double getDiscountPercentage() {
+        return discountPercentage;
+    }
+
+    public void setDiscountPercentage(Double discountPercentage) {
+        this.discountPercentage = discountPercentage;
+    }
+
+    public Double getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(Double discountAmount) {
+        this.discountAmount = discountAmount;
+    }
+
+    public String getPromotionName() {
+        return promotionName;
+    }
+
+    public void setPromotionName(String promotionName) {
+        this.promotionName = promotionName;
+    }
+
+    public String getPromotionCode() {
+        return promotionCode;
+    }
+
+    public void setPromotionCode(String promotionCode) {
+        this.promotionCode = promotionCode;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public Double getDepositAmount() {
+        return depositAmount;
+    }
+
+    public void setDepositAmount(Double depositAmount) {
+        this.depositAmount = depositAmount;
+    }
+
+    public Double getRemainingAmount() {
+        return remainingAmount;
+    }
+
+    public void setRemainingAmount(Double remainingAmount) {
+        this.remainingAmount = remainingAmount;
+    }
+
+    public Boolean getRead() {
+        return isRead;
+    }
+
+    public void setRead(Boolean read) {
+        isRead = read;
+    }
+
+    public String getDepositMethod() {
+        return depositMethod;
+    }
+
+    public void setDepositMethod(String depositMethod) {
+        this.depositMethod = depositMethod;
+    }
 }

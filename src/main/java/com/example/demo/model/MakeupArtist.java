@@ -1,6 +1,7 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
@@ -19,6 +20,9 @@ public class MakeupArtist {
     @Column(columnDefinition = "TEXT") // Sửa lỗi Data too long
     private String description;
     private String specialty;
+
+    @Column(name = "total_revenue", precision = 14, scale = 2)
+    private BigDecimal totalRevenue = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "makeupArtist", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<MakeupPortfolio> portfolios;
@@ -51,6 +55,9 @@ public class MakeupArtist {
 
     public String getSpecialty() { return specialty; }
     public void setSpecialty(String specialty) { this.specialty = specialty; }
+
+    public BigDecimal getTotalRevenue() { return totalRevenue; }
+    public void setTotalRevenue(BigDecimal totalRevenue) { this.totalRevenue = totalRevenue; }
 
     public List<MakeupPortfolio> getPortfolios() { return portfolios; }
     public void setPortfolios(List<MakeupPortfolio> portfolios) { this.portfolios = portfolios; }

@@ -1,15 +1,17 @@
 package com.example.demo;
 
+import com.example.demo.config.SecurityConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
-import com.example.demo.config.SecurityConfig; // Import file cấu hình của em vào đây
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@Import(SecurityConfig.class) // 👉 ÉP SPRING BOOT PHẢI ĐỌC FILE SECURITYCONFIG
+@EnableScheduling
+@Import(SecurityConfig.class)
 public class DemoApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(DemoApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
+    }
 }
