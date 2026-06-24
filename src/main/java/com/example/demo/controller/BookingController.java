@@ -77,6 +77,21 @@ public class BookingController {
     public ResponseEntity<?> getAllBookings() {
         return ResponseEntity.ok(bookingService.getAllBookings());
     }
+    // 🔥 API BỔ SUNG: Lấy danh sách đơn đặt lịch của một khách hàng cụ thể dựa vào userId
+    @GetMapping("/user/{userId}")
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getBookingsByUserId(@PathVariable Long userId) {
+        try {
+            // Lọc ra các đơn hàng có UserId trùng với mã khách hàng được truyền vào
+            List<com.example.demo.model.Booking> userBookings = bookingRepository.findAll().stream()
+                    .filter(b -> userId.equals(b.getUserId()))
+                    .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(userBookings);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi khi tải lịch sử đơn hàng: " + e.getMessage());
+        }
+    }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
