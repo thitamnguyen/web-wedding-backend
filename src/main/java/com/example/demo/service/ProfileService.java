@@ -86,6 +86,7 @@ public class ProfileService {
         List<ProfileAlbumDto> albumDtos = bookings.stream()
                 .filter(booking -> "DONE".equalsIgnoreCase(booking.getStatus()))
                 .map(this::toAlbumDto)
+                .filter(Objects::nonNull)
                 .toList();
 
         List<ProfilePaymentDto> paymentDtos = bookings.stream()
@@ -267,21 +268,24 @@ public class ProfileService {
     }
 
     private ProfileAlbumDto toAlbumDto(Booking booking) {
-        String title = booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Album cưới";
-        String coverImageUrl = (booking.getServicePackage() != null && booking.getServicePackage().getCategory() != null) ? booking.getServicePackage().getCategory().getImageUrl() : null;
-        String subtitle = (booking.getServicePackage() != null && booking.getServicePackage().getCategory() != null) ? booking.getServicePackage().getCategory().getDescription() : "Album hoàn thiện";
-        String conceptNote = booking.getMessage();
+        ProductItem item = productItemRepository.findByBookingId(booking.getId()).orElse(null);
+        if (item == null) {
+            return null;
+        }
 
         return new ProfileAlbumDto(
                 booking.getId(),
-                title,
+                item.getSlug(),
+                item.getTitle(),
                 formatDate(booking.getBookingDate()),
-                coverImageUrl,
-                subtitle,
+                item.getCoverImageUrl(),
+                item.getCategoryLabel(),
                 booking.getStatus(),
                 booking.getPhotographerProfile() != null ? booking.getPhotographerProfile().getFullName() : null,
                 booking.getMakeupArtist() != null ? booking.getMakeupArtist().getFullName() : null,
-                conceptNote
+                item.getExcerpt(),
+                item.getAverageRating(),
+                item.getReviewCount()
         );
     }
 

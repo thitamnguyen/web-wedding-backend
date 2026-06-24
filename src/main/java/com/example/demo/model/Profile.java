@@ -23,6 +23,9 @@ public class Profile {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "public_id")
+    private String publicId;
+
     @Column(name = "experience_years")
     private Integer experienceYears;
 
@@ -76,6 +79,14 @@ public class Profile {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public String getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
     }
 
     public Integer getExperienceYears() {

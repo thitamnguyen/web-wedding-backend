@@ -27,6 +27,9 @@ public class ServiceCategory {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column(name = "public_id")
+    private String publicId;
+
     @Column(name = "sub_title")
     private String subTitle;
 
@@ -75,6 +78,14 @@ public class ServiceCategory {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
     }
 
     public String getSubTitle() {

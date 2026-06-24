@@ -31,6 +31,9 @@ public class BlogPost {
     @Column(name = "cover_image_url")
     private String coverImageUrl;
 
+    @Column(name = "public_id")
+    private String publicId;
+
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
@@ -110,6 +113,14 @@ public class BlogPost {
 
     public void setCoverImageUrl(String coverImageUrl) {
         this.coverImageUrl = coverImageUrl;
+    }
+
+    public String getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
     }
 
     public LocalDateTime getPublishedAt() {

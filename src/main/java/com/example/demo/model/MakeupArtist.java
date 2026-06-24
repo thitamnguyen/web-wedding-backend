@@ -14,6 +14,8 @@ public class MakeupArtist {
     private String fullName;
     private String jobTitle;
     private String avatarUrl;
+    @Column(name = "public_id")
+    private String publicId;
     private String award;
     @Column(name = "user_id")
     private Long userId;
@@ -43,6 +45,9 @@ public class MakeupArtist {
 
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public String getPublicId() { return publicId; }
+    public void setPublicId(String publicId) { this.publicId = publicId; }
 
     public String getAward() { return award; }
     public void setAward(String award) { this.award = award; }

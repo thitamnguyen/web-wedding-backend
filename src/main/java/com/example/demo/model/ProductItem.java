@@ -31,11 +31,17 @@ public class ProductItem {
     @Column(name = "cover_image_url")
     private String coverImageUrl;
 
+    @Column(name = "public_id")
+    private String publicId;
+
     @Column(name = "photographer_id")
     private Long photographerId;
 
     @Column(name = "makeup_artist_id")
     private Long makeupArtistId;
+
+    @Column(name = "booking_id")
+    private Long bookingId;
 
     @Column(name = "gallery_images", columnDefinition = "TEXT")
     private String galleryImages;
@@ -50,6 +56,12 @@ public class ProductItem {
     private LocalDateTime publishedAt;
 
     private Boolean published = true;
+
+    @Transient
+    private Double averageRating;
+
+    @Transient
+    private Long reviewCount;
 
     public Long getId() {
         return id;
@@ -115,6 +127,14 @@ public class ProductItem {
         this.coverImageUrl = coverImageUrl;
     }
 
+    public String getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
+    }
+
     public Long getPhotographerId() {
         return photographerId;
     }
@@ -129,6 +149,14 @@ public class ProductItem {
 
     public void setMakeupArtistId(Long makeupArtistId) {
         this.makeupArtistId = makeupArtistId;
+    }
+
+    public Long getBookingId() {
+        return bookingId;
+    }
+
+    public void setBookingId(Long bookingId) {
+        this.bookingId = bookingId;
     }
 
     public String getGalleryImages() {
@@ -169,5 +197,21 @@ public class ProductItem {
 
     public void setPublished(Boolean published) {
         this.published = published;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public Long getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(Long reviewCount) {
+        this.reviewCount = reviewCount;
     }
 }

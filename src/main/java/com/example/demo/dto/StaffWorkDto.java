@@ -11,6 +11,8 @@ public record StaffWorkDto(
         String coverImageUrl,
         String priceRange,
         String badge,
-        LocalDateTime publishedAt
+        LocalDateTime publishedAt,
+        Double averageRating,
+        Long reviewCount
 ) {
 }

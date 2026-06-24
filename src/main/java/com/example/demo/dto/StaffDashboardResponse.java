@@ -7,6 +7,7 @@ public record StaffDashboardResponse(
         StaffProfileDto profile,
         StaffSummaryDto summary,
         List<StaffScheduleDto> schedule,
+        List<StaffScheduleDto> workBookings,
         List<StaffWorkDto> works,
         List<StaffRevenuePointDto> revenue
 ) {

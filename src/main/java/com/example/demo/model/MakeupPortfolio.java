@@ -11,6 +11,8 @@ public class MakeupPortfolio {
     private Long id;
 
     private String imageUrl;
+    @Column(name = "public_id")
+    private String publicId;
     private String styleName;
 
     @ManyToOne
@@ -25,6 +27,9 @@ public class MakeupPortfolio {
 
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getPublicId() { return publicId; }
+    public void setPublicId(String publicId) { this.publicId = publicId; }
 
     public String getStyleName() { return styleName; }
     public void setStyleName(String styleName) { this.styleName = styleName; }

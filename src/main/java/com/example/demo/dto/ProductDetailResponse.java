@@ -12,6 +12,7 @@ public class ProductDetailResponse {
     private String excerpt;
     private String content;
     private String coverImageUrl;
+    private String publicId;
     private Long photographerId;
     private Long makeupArtistId;
     private String priceRange;
@@ -19,6 +20,8 @@ public class ProductDetailResponse {
     private LocalDateTime publishedAt;
     private Boolean published;
     private List<ProductGalleryImageResponse> galleryImages;
+    private Double averageRating;
+    private Long reviewCount;
 
     public ProductDetailResponse(
             Long id,
@@ -29,6 +32,7 @@ public class ProductDetailResponse {
             String excerpt,
             String content,
             String coverImageUrl,
+            String publicId,
             Long photographerId,
             Long makeupArtistId,
             String priceRange,
@@ -45,6 +49,7 @@ public class ProductDetailResponse {
         this.excerpt = excerpt;
         this.content = content;
         this.coverImageUrl = coverImageUrl;
+        this.publicId = publicId;
         this.photographerId = photographerId;
         this.makeupArtistId = makeupArtistId;
         this.priceRange = priceRange;
@@ -86,6 +91,10 @@ public class ProductDetailResponse {
         return coverImageUrl;
     }
 
+    public String getPublicId() {
+        return publicId;
+    }
+
     public Long getPhotographerId() {
         return photographerId;
     }
@@ -112,5 +121,21 @@ public class ProductDetailResponse {
 
     public List<ProductGalleryImageResponse> getGalleryImages() {
         return galleryImages;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public Long getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(Long reviewCount) {
+        this.reviewCount = reviewCount;
     }
 }
