@@ -5,15 +5,20 @@ import com.example.demo.model.Booking;
 import com.example.demo.model.MakeupArtist;
 import com.example.demo.model.Profile;
 import com.example.demo.model.ProductItem;
+import com.example.demo.model.ProductGalleryImage;
 import com.example.demo.model.User;
 import com.example.demo.repository.BookingRepository;
 import com.example.demo.repository.MakeupArtistRepository;
 import com.example.demo.repository.ProfileRepository;
+import com.example.demo.repository.ProductGalleryImageRepository;
 import com.example.demo.repository.ProductItemRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.ProductReviewRepository;
+import com.example.demo.service.CloudinaryService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -35,24 +40,99 @@ public class StaffService {
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
     private final ProductItemRepository productItemRepository;
+    private final ProductReviewRepository productReviewRepository;
+    private final ProductGalleryImageRepository productGalleryImageRepository;
     private final ProfileRepository profileRepository;
     private final MakeupArtistRepository makeupArtistRepository;
+    private final CloudinaryService cloudinaryService;
     private final PasswordEncoder passwordEncoder;
 
     public StaffService(
             UserRepository userRepository,
             BookingRepository bookingRepository,
             ProductItemRepository productItemRepository,
+            ProductReviewRepository productReviewRepository,
+            ProductGalleryImageRepository productGalleryImageRepository,
             ProfileRepository profileRepository,
             MakeupArtistRepository makeupArtistRepository,
+            CloudinaryService cloudinaryService,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.productItemRepository = productItemRepository;
+        this.productReviewRepository = productReviewRepository;
+        this.productGalleryImageRepository = productGalleryImageRepository;
         this.profileRepository = profileRepository;
         this.makeupArtistRepository = makeupArtistRepository;
+        this.cloudinaryService = cloudinaryService;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @Transactional
+    public ProductItem createWork(String authHeader, StaffWorkCreateRequest request) {
+        StaffContext context = resolveContext(authHeader);
+        if (request == null) {
+            throw new RuntimeException("Thiếu dữ liệu sản phẩm");
+        }
+        if (request.getCoverImageFile() == null || request.getCoverImageFile().isEmpty()) {
+            throw new RuntimeException("Vui lòng chọn ảnh bìa");
+        }
+
+        ProductItem item = new ProductItem();
+        item.setTitle(request.getTitle());
+        item.setExcerpt(request.getExcerpt());
+        item.setContent(request.getContent());
+        item.setBadge(request.getBadge());
+        item.setPriceRange(request.getPriceRange());
+        item.setSlug((request.getSlug() != null && !request.getSlug().isBlank()) ? request.getSlug() : "staff-" + System.currentTimeMillis());
+        item.setPublished(Boolean.TRUE);
+        item.setPublishedAt(java.time.LocalDateTime.now());
+
+        if (context.isPhotographer()) {
+            if (request.getBookingId() == null) {
+                throw new RuntimeException("Vui lòng chọn booking cần gắn album");
+            }
+            Booking booking = bookingRepository.findById(request.getBookingId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
+            Long photographerId = resolvePhotographerProfileUserId(context);
+            if (!photographerId.equals(booking.getPhotographerId())) {
+                throw new RuntimeException("Booking này không thuộc photographer hiện tại");
+            }
+            if (!"CONFIRMED".equalsIgnoreCase(booking.getStatus())) {
+                throw new RuntimeException("Chỉ có thể hoàn thành booking đang CONFIRMED");
+            }
+            applyPhotographerCategory(item, request.getCategoryKey());
+            item.setPhotographerId(photographerId);
+            item.setBookingId(booking.getId());
+        } else if (context.isMakeup()) {
+            item.setCategoryKey("bridal-makeup");
+            item.setCategoryLabel("Bridal Makeup");
+            item.setMakeupArtistId(context.staffRefId());
+        } else {
+            throw new RuntimeException("Nhân viên không hợp lệ");
+        }
+
+        if (item.getCategoryLabel() == null || item.getCategoryLabel().isBlank()) {
+            setCategoryLabel(item);
+        }
+
+        var coverUpload = cloudinaryService.uploadImage(request.getCoverImageFile());
+        item.setCoverImageUrl(coverUpload.getSecureUrl());
+        item.setPublicId(coverUpload.getPublicId());
+
+        ProductItem saved = productItemRepository.save(item);
+        saveGallery(saved, request.getGalleryFiles());
+
+        if (context.isPhotographer()) {
+            Booking booking = bookingRepository.findById(request.getBookingId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy booking"));
+            booking.setStatus("DONE");
+            booking.setPaymentStatus("PAID");
+            booking.setRemainingAmount(0.0);
+            bookingRepository.save(booking);
+        }
+        return saved;
     }
 
     public StaffDashboardResponse getDashboard(String authHeader) {
@@ -69,6 +149,7 @@ public class StaffService {
                 profile,
                 summary,
                 bookings.stream().map(this::toScheduleDto).toList(),
+                getWorkBookings(context).stream().map(this::toScheduleDto).toList(),
                 works.stream().map(this::toWorkDto).toList(),
                 revenue
         );
@@ -148,6 +229,11 @@ public class StaffService {
     public List<StaffWorkDto> getWorks(String authHeader) {
         StaffContext context = resolveContext(authHeader);
         return loadWorks(context).stream().map(this::toWorkDto).toList();
+    }
+
+    public List<StaffScheduleDto> getWorkBookings(String authHeader) {
+        StaffContext context = resolveContext(authHeader);
+        return getWorkBookings(context).stream().map(this::toScheduleDto).toList();
     }
 
     public List<StaffRevenuePointDto> getRevenue(String authHeader) {
@@ -249,7 +335,7 @@ public class StaffService {
     }
 
     private List<Booking> loadBookings(StaffContext context) {
-        Long refId = context.staffRefId();
+        Long refId = context.isPhotographer() ? resolvePhotographerProfileUserId(context) : context.staffRefId();
         if (refId == null) {
             return List.of();
         }
@@ -277,7 +363,7 @@ public class StaffService {
     }
 
     private List<ProductItem> loadWorks(StaffContext context) {
-        Long refId = context.staffRefId();
+        Long refId = context.isPhotographer() ? resolvePhotographerProfileUserId(context) : context.staffRefId();
         if (refId == null) {
             return List.of();
         }
@@ -285,6 +371,38 @@ public class StaffService {
         return context.isPhotographer()
                 ? productItemRepository.findByPhotographerIdAndPublishedTrueOrderByPublishedAtDesc(refId)
                 : productItemRepository.findByMakeupArtistIdAndPublishedTrueOrderByPublishedAtDesc(refId);
+    }
+
+    private List<Booking> getWorkBookings(StaffContext context) {
+        Long refId = resolvePhotographerProfileUserId(context);
+        if (refId == null) {
+            return List.of();
+        }
+
+        if (!context.isPhotographer()) {
+            return List.of();
+        }
+
+        LocalDate today = LocalDate.now();
+
+        return bookingRepository.findByPhotographerIdAndStatus(refId, "CONFIRMED").stream()
+                .filter(booking -> booking.getBookingDate() != null)
+                .filter(booking -> !booking.getBookingDate().isAfter(today))
+                .sorted((left, right) -> {
+                    LocalDate leftDate = left.getBookingDate();
+                    LocalDate rightDate = right.getBookingDate();
+                    if (leftDate == null && rightDate == null) {
+                        return Long.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId());
+                    }
+                    if (leftDate == null) return 1;
+                    if (rightDate == null) return -1;
+                    int dateCompare = rightDate.compareTo(leftDate);
+                    if (dateCompare != 0) {
+                        return dateCompare;
+                    }
+                    return Long.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId());
+                })
+                .toList();
     }
 
     private List<StaffRevenuePointDto> buildRevenuePoints(List<Booking> bookings) {
@@ -340,8 +458,55 @@ public class StaffService {
                 item.getCoverImageUrl(),
                 item.getPriceRange(),
                 item.getBadge(),
-                item.getPublishedAt()
+                item.getPublishedAt(),
+                productReviewRepository.averageRating(item.getId()),
+                productReviewRepository.countByProductItemId(item.getId())
         );
+    }
+
+    private void applyPhotographerCategory(ProductItem item, String categoryKey) {
+        String normalized = (categoryKey == null || categoryKey.isBlank()) ? "concept-noi-bat" : categoryKey;
+        switch (normalized) {
+            case "concept-noi-bat" -> item.setCategoryLabel("Concept Nổi Bật");
+            case "album-phong-su-cuoi" -> item.setCategoryLabel("Album Phóng Sự Cưới");
+            case "album-pre-wedding" -> item.setCategoryLabel("Album Pre-Wedding");
+            default -> throw new RuntimeException("Phân loại không hợp lệ cho Photographer");
+        }
+        item.setCategoryKey(normalized);
+    }
+
+    private void setCategoryLabel(ProductItem item) {
+        if (item.getCategoryKey() == null) {
+            return;
+        }
+        switch (item.getCategoryKey()) {
+            case "concept-noi-bat" -> item.setCategoryLabel("Concept Nổi Bật");
+            case "album-pre-wedding" -> item.setCategoryLabel("Album Pre-Wedding");
+            case "bst-vay-cuoi" -> item.setCategoryLabel("BST Váy Cưới");
+            case "album-phong-su-cuoi" -> item.setCategoryLabel("Album Phóng Sự Cưới");
+            case "bridal-makeup" -> item.setCategoryLabel("Bridal Makeup");
+            default -> {
+            }
+        }
+    }
+
+    private void saveGallery(ProductItem productItem, MultipartFile[] files) {
+        if (files == null) {
+            return;
+        }
+        int index = 0;
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            var upload = cloudinaryService.uploadImage(file);
+            ProductGalleryImage image = new ProductGalleryImage();
+            image.setProductItem(productItem);
+            image.setImageUrl(upload.getSecureUrl());
+            image.setPublicId(upload.getPublicId());
+            image.setSortOrder(index++);
+            productGalleryImageRepository.save(image);
+        }
     }
 
     private ProfileUserDto toUserDto(User user) {
@@ -419,6 +584,19 @@ public class StaffService {
         }
 
         throw new RuntimeException("Tài khoản nhân viên chưa được gắn hồ sơ làm việc");
+    }
+
+    private Long resolvePhotographerProfileUserId(StaffContext context) {
+        if (context == null) {
+            return null;
+        }
+        if (context.profile() != null && context.profile().getUserId() != null) {
+            return context.profile().getUserId();
+        }
+        if (context.staffRefId() != null) {
+            return context.staffRefId();
+        }
+        return context.user() != null ? context.user().getId() : null;
     }
 
     private Long extractUserId(String authHeader) {

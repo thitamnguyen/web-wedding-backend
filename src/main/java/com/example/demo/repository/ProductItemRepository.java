@@ -20,4 +20,8 @@ public interface ProductItemRepository extends JpaRepository<ProductItem, Long> 
     List<ProductItem> findByPhotographerIdAndPublishedTrueOrderByPublishedAtDesc(Long photographerId);
 
     List<ProductItem> findByMakeupArtistIdAndPublishedTrueOrderByPublishedAtDesc(Long makeupArtistId);
+
+    List<ProductItem> findByBookingIdIn(List<Long> bookingIds);
+
+    java.util.Optional<ProductItem> findByBookingId(Long bookingId);
 }
