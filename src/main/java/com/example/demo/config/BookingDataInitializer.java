@@ -29,24 +29,33 @@ public class BookingDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // 1. Kiểm tra xem bảng wedding_services đã có dữ liệu chưa, nếu chưa có thì chèn tạm dữ liệu mồi
-        Integer serviceCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM wedding_services", Integer.class);
-        if (serviceCount == null || serviceCount == 0) {
-            System.out.println("👉 Bảng wedding_services trống. Đang tạo dịch vụ mồi để tránh lỗi Foreign Key...");
-            jdbcTemplate.execute("INSERT INTO wedding_services (id, name, price) VALUES (1, 'Gói Chụp Ảnh Cưới Standard', 12500000.0)");
-            jdbcTemplate.execute("INSERT INTO wedding_services (id, name, price) VALUES (2, 'Gói Chụp Ảnh Cưới Premium', 18500000.0)");
-            jdbcTemplate.execute("INSERT INTO wedding_services (id, name, price) VALUES (3, 'Gói Phóng Sự Cưới VIP', 16800000.0)");
+        // 1. Kiểm tra và chèn danh mục dịch vụ (service_categories) nếu trống
+        Integer categoryCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM service_categories", Integer.class);
+        if (categoryCount == null || categoryCount == 0) {
+            System.out.println("👉 Bảng service_categories trống. Đang tạo danh mục mẫu...");
+            jdbcTemplate.execute("INSERT INTO service_categories (id, category_code, title, tagline, image_url, sub_title, description) VALUES (1, 'NGAY_CUOI', 'Gói Ngày cưới', 'Trọn gói lễ gia tiên & tiệc cưới', '', 'Dịch vụ ngày cưới', 'Mô tả chi tiết')");
+            jdbcTemplate.execute("INSERT INTO service_categories (id, category_code, title, tagline, image_url, sub_title, description) VALUES (2, 'PRE_WEDDING', 'Gói Pre Wedding', 'Album cưới ngoại cảnh', '', 'Dịch vụ Pre Wedding', 'Mô tả chi tiết')");
+            jdbcTemplate.execute("INSERT INTO service_categories (id, category_code, title, tagline, image_url, sub_title, description) VALUES (3, 'PHONG_SU', 'Quay Phóng sự ngày cưới', 'Cinematic highlight', '', 'Dịch vụ quay phim', 'Mô tả chi tiết')");
         }
 
-        // Lấy danh sách ID dịch vụ thực tế đang có trong DB
-        List<Long> validServiceIds = jdbcTemplate.queryForList("SELECT id FROM wedding_services", Long.class);
+        // 2. Kiểm tra và chèn gói dịch vụ (service_packages) nếu trống
+        Integer packageCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM service_packages", Integer.class);
+        if (packageCount == null || packageCount == 0) {
+            System.out.println("👉 Bảng service_packages trống. Đang tạo gói dịch vụ mẫu...");
+            jdbcTemplate.execute("INSERT INTO service_packages (id, name, price, outfits, makeup, duration, team, products, category_id) VALUES (1, 'Standard Package', 12500000.0, '2 Váy cưới, 2 Vest', '1 Lần trang điểm', '4 Tiếng', '1 Photographer', '1 Album 30 trang', 1)");
+            jdbcTemplate.execute("INSERT INTO service_packages (id, name, price, outfits, makeup, duration, team, products, category_id) VALUES (2, 'Premium Package', 18500000.0, '3 Váy cưới, 3 Vest', '2 Lần trang điểm', '1 Ngày', '1 Photographer, 1 Assistant', '1 Album 40 trang', 2)");
+            jdbcTemplate.execute("INSERT INTO service_packages (id, name, price, outfits, makeup, duration, team, products, category_id) VALUES (3, 'VIP Package', 16800000.0, 'N/A', 'N/A', '1 Ngày', '2 Photographers, 1 Videographer', '1 Phim highlight 5 phút', 3)");
+        }
 
-        if (validServiceIds.isEmpty()) {
-            System.err.println("❌ Không tìm thấy dịch vụ nào. Bỏ qua việc khởi tạo Booking mẫu để tránh sập app!");
+        // Lấy danh sách ID gói dịch vụ thực tế đang có trong DB
+        List<Integer> validPackageIds = jdbcTemplate.queryForList("SELECT id FROM service_packages", Integer.class);
+
+        if (validPackageIds.isEmpty()) {
+            System.err.println("❌ Không tìm thấy gói dịch vụ nào. Bỏ qua việc khởi tạo Booking mẫu để tránh sập app!");
             return;
         }
 
-        // 2. Tiến hành kiểm tra và nạp dữ liệu Booking mẫu
+        // 3. Tiến hành kiểm tra và nạp dữ liệu Booking mẫu
         List<Booking> existing = new ArrayList<>(bookingRepository.findAll());
         Set<String> existingEmails = existing.stream()
                 .map(Booking::getCustomerEmail)
@@ -55,7 +64,7 @@ public class BookingDataInitializer implements CommandLineRunner {
 
         boolean changed = false;
         // Truyền danh sách ID hợp lệ vào hàm build
-        for (Booking sample : buildSamples(validServiceIds)) {
+        for (Booking sample : buildSamples(validPackageIds)) {
             if (!existingEmails.contains(sample.getCustomerEmail())) {
                 existing.add(sample);
                 changed = true;
@@ -72,13 +81,13 @@ public class BookingDataInitializer implements CommandLineRunner {
         }
     }
 
-    private List<Booking> buildSamples(List<Long> validServiceIds) {
+    private List<Booking> buildSamples(List<Integer> validPackageIds) {
         LocalDate today = LocalDate.now();
 
         // Chọn ID an toàn từ DB: Nếu DB không có đủ 3 ID khác nhau, ta sẽ lấy ID đầu tiên gán làm mặc định
-        Long id1 = validServiceIds.get(0);
-        Long id2 = validServiceIds.size() > 1 ? validServiceIds.get(1) : id1;
-        Long id3 = validServiceIds.size() > 2 ? validServiceIds.get(2) : id1;
+        Integer id1 = validPackageIds.get(0);
+        Integer id2 = validPackageIds.size() > 1 ? validPackageIds.get(1) : id1;
+        Integer id3 = validPackageIds.size() > 2 ? validPackageIds.get(2) : id1;
 
         return List.of(
                 create(
@@ -148,7 +157,7 @@ public class BookingDataInitializer implements CommandLineRunner {
             LocalDate bookingDate,
             String status,
             String paymentStatus,
-            Long serviceId,
+            Integer servicePackageId,
             Long photographerId,
             Long makeupArtistId,
             Double totalPrice,
@@ -162,7 +171,7 @@ public class BookingDataInitializer implements CommandLineRunner {
         booking.setBookingDate(bookingDate);
         booking.setStatus(status);
         booking.setPaymentStatus(paymentStatus);
-        booking.setServiceId(serviceId);
+        booking.setServicePackageId(servicePackageId);
         booking.setPhotographerId(photographerId);
         booking.setMakeupArtistId(makeupArtistId);
         booking.setTotalPrice(totalPrice);

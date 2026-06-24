@@ -220,8 +220,8 @@ public class ProfileService {
     }
 
     private ProfileBookingDto toBookingDto(Booking booking, Review review) {
-        String serviceTitle = booking.getWeddingService() != null ? booking.getWeddingService().getTitle() : "Gói dịch vụ cưới";
-        String serviceImageUrl = booking.getWeddingService() != null ? booking.getWeddingService().getImageUrl() : null;
+        String serviceTitle = booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Gói dịch vụ cưới";
+        String serviceImageUrl = (booking.getServicePackage() != null && booking.getServicePackage().getCategory() != null) ? booking.getServicePackage().getCategory().getImageUrl() : null;
         String photographerName = booking.getPhotographerProfile() != null ? booking.getPhotographerProfile().getFullName() : null;
         String makeupArtistName = booking.getMakeupArtist() != null ? booking.getMakeupArtist().getFullName() : null;
         boolean hasReview = review != null;
@@ -267,9 +267,9 @@ public class ProfileService {
     }
 
     private ProfileAlbumDto toAlbumDto(Booking booking) {
-        String title = booking.getWeddingService() != null ? booking.getWeddingService().getTitle() : "Album cưới";
-        String coverImageUrl = booking.getWeddingService() != null ? booking.getWeddingService().getImageUrl() : null;
-        String subtitle = booking.getWeddingService() != null ? booking.getWeddingService().getShortDescription() : "Album hoàn thiện";
+        String title = booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Album cưới";
+        String coverImageUrl = (booking.getServicePackage() != null && booking.getServicePackage().getCategory() != null) ? booking.getServicePackage().getCategory().getImageUrl() : null;
+        String subtitle = (booking.getServicePackage() != null && booking.getServicePackage().getCategory() != null) ? booking.getServicePackage().getCategory().getDescription() : "Album hoàn thiện";
         String conceptNote = booking.getMessage();
 
         return new ProfileAlbumDto(
@@ -289,7 +289,7 @@ public class ProfileService {
         double totalPrice = booking.getTotalPrice() != null ? booking.getTotalPrice() : 0.0;
         double deposit = calculateDeposit(booking.getTotalPrice());
         double remaining = Math.max(0, totalPrice - deposit);
-        String serviceTitle = booking.getWeddingService() != null ? booking.getWeddingService().getTitle() : "Gói dịch vụ cưới";
+        String serviceTitle = booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Gói dịch vụ cưới";
         String qrImageUrl = "https://img.vietqr.io/image/MB-0987654321-compact.png?amount="
                 + Math.round(deposit)
                 + "&addInfo=STUDIOWS"
@@ -315,7 +315,7 @@ public class ProfileService {
             return new ProfileReviewDto(
                     null,
                     booking.getId(),
-                    booking.getWeddingService() != null ? booking.getWeddingService().getTitle() : "Gói dịch vụ cưới",
+                    booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Gói dịch vụ cưới",
                     null,
                     null,
                     null,
@@ -329,7 +329,7 @@ public class ProfileService {
         return new ProfileReviewDto(
                 review.getId(),
                 booking.getId(),
-                booking.getWeddingService() != null ? booking.getWeddingService().getTitle() : "Gói dịch vụ cưới",
+                booking.getServicePackage() != null ? booking.getServicePackage().getName() : "Gói dịch vụ cưới",
                 review.getRating(),
                 review.getComment(),
                 review.getCreatedAt() != null ? review.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : null,

@@ -44,28 +44,47 @@ public class BookingService {
     @Autowired
     private PromotionService promotionService;
 
+    @Autowired
+    private com.example.demo.repository.ServicePackageRepository servicePackageRepository;
+
+    @Autowired
+    private com.example.demo.repository.UserRepository userRepository;
+
     public Booking createBooking(Booking booking) {
         validateBookingDates(booking);
+        System.out.println(booking.getPhotographerId());
+        // Auto-assign photographer if not specified
+        if (booking.getPhotographerId() == null) {
+            Long autoPhotoId = autoAssignPhotographer(booking.getBookingDate());
+            if (autoPhotoId == null) {
+                throw new RuntimeException("Không tìm được nhiếp ảnh gia trống vào ngày bạn chọn.");
+            }
+            booking.setPhotographerId(autoPhotoId);
+        }
+
+        // Auto-assign makeup artist if not specified
+        if (booking.getMakeupArtistId() == null) {
+            Long autoMakeupId = autoAssignMakeupArtist(booking.getBookingDate());
+            if (autoMakeupId == null) {
+                throw new RuntimeException("Không tìm được thợ makeup trống vào ngày bạn chọn.");
+            }
+            booking.setMakeupArtistId(autoMakeupId);
+        }
+
         validateStaffAvailability(booking);
 
         booking.setStatus("PENDING");
         booking.setPaymentStatus("UNPAID");
 
         try {
-            if (booking.getServiceId() != null) {
-                WeddingService selectedService = serviceRepository.findById(booking.getServiceId()).orElse(null);
-                if (selectedService != null) {
-                    String rawPrice = selectedService.getPriceRange();
-                    if (rawPrice != null && !rawPrice.trim().isEmpty()) {
-                        String cleanPriceStr = rawPrice.replaceAll("[^0-9]", "");
-                        if (!cleanPriceStr.isEmpty()) {
-                            booking.setTotalPrice(Double.parseDouble(cleanPriceStr));
-                        }
-                    }
+            if (booking.getServicePackageId() != null) {
+                com.example.demo.model.ServicePackage selectedPackage = servicePackageRepository.findById(booking.getServicePackageId()).orElse(null);
+                if (selectedPackage != null) {
+                    booking.setTotalPrice(selectedPackage.getPrice());
                 }
             }
         } catch (Exception e) {
-            System.out.println("Khong the boc tach so tu priceRange: " + e.getMessage());
+            System.out.println("Khong the lay gia tu ServicePackage: " + e.getMessage());
             booking.setTotalPrice(0.0);
         }
 
@@ -207,30 +226,47 @@ public class BookingService {
             return;
         }
 
-        boolean hasPhotographer = booking.getPhotographerId() != null;
-        boolean hasMakeup = booking.getMakeupArtistId() != null;
-        int participantCount = (hasPhotographer ? 1 : 0) + (hasMakeup ? 1 : 0);
-        if (participantCount == 0) {
-            return;
-        }
+        // Thực hiện chia tiền chuẩn xác theo tỷ lệ: Admin 50%, Photo 25%, Makeup 25%
+        BigDecimal adminShare = revenue.multiply(BigDecimal.valueOf(0.50)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal photographerShare = revenue.multiply(BigDecimal.valueOf(0.25)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal makeupShare = revenue.multiply(BigDecimal.valueOf(0.25)).setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal share = revenue.divide(BigDecimal.valueOf(participantCount), 2, RoundingMode.HALF_UP);
-
-        if (hasPhotographer) {
+        // 1. Cộng doanh thu cho Photographer (25%)
+        if (booking.getPhotographerId() != null) {
             profileRepository.findById(booking.getPhotographerId()).ifPresent(profile -> {
                 BigDecimal current = profile.getTotalRevenue() != null ? profile.getTotalRevenue() : BigDecimal.ZERO;
-                profile.setTotalRevenue(current.add(share));
+                profile.setTotalRevenue(current.add(photographerShare));
                 profileRepository.save(profile);
             });
         }
 
-        if (hasMakeup) {
+        // 2. Cộng doanh thu cho Makeup Artist (25%)
+        if (booking.getMakeupArtistId() != null) {
             makeupArtistRepository.findById(booking.getMakeupArtistId()).ifPresent(artist -> {
                 BigDecimal current = artist.getTotalRevenue() != null ? artist.getTotalRevenue() : BigDecimal.ZERO;
-                artist.setTotalRevenue(current.add(share));
+                artist.setTotalRevenue(current.add(makeupShare));
                 makeupArtistRepository.save(artist);
             });
         }
+
+        // 3. Cộng 50% Doanh thu thực tế (real_profit) cho tài khoản Admin
+        // Tìm tài khoản có ID = 1 làm tài khoản nhận tiền Admin mặc định
+        userRepository.findById(5L).ifPresent(admin -> {
+            try {
+                // LƯU Ý: Đảm bảo model User/Admin của bạn đã có trường realProfit (kiểu BigDecimal) nhé
+                // Nếu tên thuộc tính trong Model khác (ví dụ: doanhThuThucTe), hãy sửa tên hàm get/set cho khớp.
+                java.lang.reflect.Method getProfitMethod = admin.getClass().getMethod("getRealProfit");
+                BigDecimal currentProfit = (BigDecimal) getProfitMethod.invoke(admin);
+                if (currentProfit == null) currentProfit = BigDecimal.ZERO;
+
+                java.lang.reflect.Method setProfitMethod = admin.getClass().getMethod("setRealProfit", BigDecimal.class);
+                setProfitMethod.invoke(admin, currentProfit.add(adminShare));
+
+                userRepository.save(admin);
+            } catch (Exception e) {
+                System.out.println("Lưu ý: Hãy kiểm tra xem Model User đã được thêm thuộc tính 'realProfit' chưa: " + e.getMessage());
+            }
+        });
     }
 
     public Map<String, Object> getDashboardStats() {
@@ -248,8 +284,14 @@ public class BookingService {
         stats.put("confirmedBookings", confirmedCount);
         stats.put("doneBookings", doneCount);
         stats.put("cancelledBookings", cancelledCount);
-        stats.put("totalRevenue", financeReport.get("actualRevenue").doubleValue());
+
+        BigDecimal totalActualRevenue = financeReport.get("actualRevenue");
+        stats.put("totalRevenue", totalActualRevenue.doubleValue());
         stats.put("totalCashFlow", financeReport.get("totalCashFlow").doubleValue());
+
+        // Bổ sung dữ liệu Doanh thu thực tế của admin lên Dashboard bằng 50% tổng doanh thu đơn hoàn thành
+        BigDecimal adminRealProfit = totalActualRevenue.multiply(BigDecimal.valueOf(0.50)).setScale(2, RoundingMode.HALF_UP);
+        stats.put("realProfit", adminRealProfit.doubleValue());
 
         return stats;
     }
@@ -316,5 +358,55 @@ public class BookingService {
 
     public List<LocalDate> getMakeupArtistBusyDates(Long makeupArtistId) {
         return bookingRepository.findBusyDatesForMakeupArtist(makeupArtistId);
+    }
+
+    public Long autoAssignPhotographer(LocalDate bookingDate) {
+        if (bookingDate == null) {
+            return null;
+        }
+        List<com.example.demo.model.Profile> allPhotographers = profileRepository.findAll();
+        System.out.println("--- BẮT ĐẦU CHECK NGÀY: " + bookingDate + " ---");
+        List<com.example.demo.model.Profile> freePhotographers = allPhotographers.stream()
+                .filter(p -> {
+                    List<LocalDate> busyDates = getPhotographerBusyDates(p.getUserId());
+                    return !busyDates.contains(bookingDate);
+                })
+                .toList();
+            System.out.println("Danh sách thợ RẢNH sau khi lọc: "
+                + freePhotographers.stream().map(p -> "ID: " + p.getUserId() + " - Doanh thu: " + p.getTotalRevenue()).toList());
+        if (freePhotographers.isEmpty()) {
+            return null;
+        }
+
+        // FIX BUG: So sánh trực tiếp thuộc tính totalRevenue từ object Profile thay vì gọi câu query lỗi của Repository
+        com.example.demo.model.Profile selected = freePhotographers.stream()
+                .min(java.util.Comparator.comparing(p -> p.getTotalRevenue() != null ? p.getTotalRevenue() : BigDecimal.ZERO))
+                .orElse(null);
+
+        return selected != null ? selected.getUserId() : null;
+    }
+
+    public Long autoAssignMakeupArtist(LocalDate bookingDate) {
+        if (bookingDate == null) {
+            return null;
+        }
+        List<com.example.demo.model.MakeupArtist> allMakeup = makeupArtistRepository.findAll();
+        List<com.example.demo.model.MakeupArtist> freeMakeup = allMakeup.stream()
+                .filter(m -> {
+                    List<LocalDate> busyDates = getMakeupArtistBusyDates(m.getId());
+                    return !busyDates.contains(bookingDate);
+                })
+                .toList();
+
+        if (freeMakeup.isEmpty()) {
+            return null;
+        }
+
+        // FIX BUG: So sánh trực tiếp thuộc tính totalRevenue từ object MakeupArtist để tìm người có doanh thu thấp nhất
+        com.example.demo.model.MakeupArtist selected = freeMakeup.stream()
+                .min(java.util.Comparator.comparing(m -> m.getTotalRevenue() != null ? m.getTotalRevenue() : BigDecimal.ZERO))
+                .orElse(null);
+
+        return selected != null ? selected.getId() : null;
     }
 }
