@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -84,7 +85,6 @@ public class StaffService {
         item.setExcerpt(request.getExcerpt());
         item.setContent(request.getContent());
         item.setBadge(request.getBadge());
-        item.setPriceRange(request.getPriceRange());
         item.setSlug((request.getSlug() != null && !request.getSlug().isBlank()) ? request.getSlug() : "staff-" + System.currentTimeMillis());
         item.setPublished(Boolean.TRUE);
         item.setPublishedAt(java.time.LocalDateTime.now());
@@ -105,12 +105,28 @@ public class StaffService {
             applyPhotographerCategory(item, request.getCategoryKey());
             item.setPhotographerId(photographerId);
             item.setBookingId(booking.getId());
+            if (booking.getTotalPrice() == null || booking.getTotalPrice() <= 0) {
+                throw new RuntimeException("Booking chua co gia hop le de tao san pham");
+            }
+            item.setPriceRange(formatPriceRange(booking.getTotalPrice()));
         } else if (context.isMakeup()) {
             item.setCategoryKey("bridal-makeup");
             item.setCategoryLabel("Bridal Makeup");
             item.setMakeupArtistId(context.staffRefId());
+            if (request.getBookingId() != null) {
+                Booking makeupBooking = bookingRepository.findById(request.getBookingId())
+                        .orElseThrow(() -> new RuntimeException("Khong tim thay booking"));
+                if (makeupBooking.getTotalPrice() != null && makeupBooking.getTotalPrice() > 0) {
+                    item.setBookingId(makeupBooking.getId());
+                    item.setPriceRange(formatPriceRange(makeupBooking.getTotalPrice()));
+                }
+            }
         } else {
             throw new RuntimeException("Nhân viên không hợp lệ");
+        }
+
+        if (item.getPriceRange() == null || item.getPriceRange().isBlank()) {
+            throw new RuntimeException("Khong the lay gia tu booking");
         }
 
         if (item.getCategoryLabel() == null || item.getCategoryLabel().isBlank()) {
@@ -335,7 +351,21 @@ public class StaffService {
     }
 
     private List<Booking> loadBookings(StaffContext context) {
-        Long refId = context.isPhotographer() ? resolvePhotographerProfileUserId(context) : context.staffRefId();
+        Long refId = null;
+        
+        if (context.isPhotographer()) {
+            // For photographers: use userId from profile
+            refId = resolvePhotographerProfileUserId(context);
+        } else {
+            // For makeup artists: use makeup artist ID directly
+            if (context.makeupArtist() != null && context.makeupArtist().getId() != null) {
+                refId = context.makeupArtist().getId();
+            } else if (context.staffRefId() != null) {
+                // Fallback to staffRefId if set
+                refId = context.staffRefId();
+            }
+        }
+        
         if (refId == null) {
             return List.of();
         }
@@ -363,7 +393,21 @@ public class StaffService {
     }
 
     private List<ProductItem> loadWorks(StaffContext context) {
-        Long refId = context.isPhotographer() ? resolvePhotographerProfileUserId(context) : context.staffRefId();
+        Long refId = null;
+        
+        if (context.isPhotographer()) {
+            // For photographers: use userId from profile
+            refId = resolvePhotographerProfileUserId(context);
+        } else {
+            // For makeup artists: use makeup artist ID directly
+            if (context.makeupArtist() != null && context.makeupArtist().getId() != null) {
+                refId = context.makeupArtist().getId();
+            } else if (context.staffRefId() != null) {
+                // Fallback to staffRefId if set
+                refId = context.staffRefId();
+            }
+        }
+        
         if (refId == null) {
             return List.of();
         }
@@ -509,6 +553,14 @@ public class StaffService {
         }
     }
 
+    private String formatPriceRange(Double totalPrice) {
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        numberFormat.setGroupingUsed(true);
+        numberFormat.setMinimumFractionDigits(0);
+        numberFormat.setMaximumFractionDigits(0);
+        return numberFormat.format(Math.round(totalPrice));
+    }
+
     private ProfileUserDto toUserDto(User user) {
         return new ProfileUserDto(
                 user.getId(),
@@ -590,12 +642,11 @@ public class StaffService {
         if (context == null) {
             return null;
         }
+        // Always prioritize profile.userId since photographer_id in Booking is stored as userId
         if (context.profile() != null && context.profile().getUserId() != null) {
             return context.profile().getUserId();
         }
-        if (context.staffRefId() != null) {
-            return context.staffRefId();
-        }
+        // Fallback to user.id only (not staffRefId which may be different)
         return context.user() != null ? context.user().getId() : null;
     }
 

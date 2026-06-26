@@ -9,6 +9,7 @@ public class StaffWorkCreateRequest {
     private String excerpt;
     private String content;
     private String badge;
+    // Kept for backward compatibility, but backend now derives price from booking.totalPrice.
     private String priceRange;
     private String slug;
     private String categoryKey;

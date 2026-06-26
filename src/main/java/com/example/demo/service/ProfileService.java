@@ -2,14 +2,18 @@ package com.example.demo.service;
 
 import com.example.demo.dto.*;
 import com.example.demo.model.Booking;
+import com.example.demo.model.AiDressFavorite;
 import com.example.demo.model.ConceptFavorite;
 import com.example.demo.model.ProductItem;
 import com.example.demo.model.Review;
+import com.example.demo.model.WeddingDress;
 import com.example.demo.model.User;
+import com.example.demo.repository.AiDressFavoriteRepository;
 import com.example.demo.repository.BookingRepository;
 import com.example.demo.repository.ConceptFavoriteRepository;
 import com.example.demo.repository.ProductItemRepository;
 import com.example.demo.repository.ReviewRepository;
+import com.example.demo.repository.WeddingDressRepository;
 import com.example.demo.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,7 +39,9 @@ public class ProfileService {
     private final BookingRepository bookingRepository;
     private final ReviewRepository reviewRepository;
     private final ConceptFavoriteRepository conceptFavoriteRepository;
+    private final AiDressFavoriteRepository aiDressFavoriteRepository;
     private final ProductItemRepository productItemRepository;
+    private final WeddingDressRepository weddingDressRepository;
     private final PasswordEncoder passwordEncoder;
 
     public ProfileService(
@@ -43,14 +49,18 @@ public class ProfileService {
             BookingRepository bookingRepository,
             ReviewRepository reviewRepository,
             ConceptFavoriteRepository conceptFavoriteRepository,
+            AiDressFavoriteRepository aiDressFavoriteRepository,
             ProductItemRepository productItemRepository,
+            WeddingDressRepository weddingDressRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
         this.reviewRepository = reviewRepository;
         this.conceptFavoriteRepository = conceptFavoriteRepository;
+        this.aiDressFavoriteRepository = aiDressFavoriteRepository;
         this.productItemRepository = productItemRepository;
+        this.weddingDressRepository = weddingDressRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -76,6 +86,17 @@ public class ProfileService {
 
         List<ProfileFavoriteConceptDto> favoriteDtos = favorites.stream()
                 .map(favorite -> toFavoriteDto(favorite, productMap.get(favorite.getProductItemId())))
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<AiDressFavorite> aiFavorites = aiDressFavoriteRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        Map<Long, WeddingDress> dressMap = weddingDressRepository.findAllById(
+                        aiFavorites.stream().map(AiDressFavorite::getDressId).toList())
+                .stream()
+                .collect(Collectors.toMap(WeddingDress::getId, dress -> dress, (a, b) -> a, LinkedHashMap::new));
+
+        List<ProfileAiDressFavoriteDto> aiFavoriteDtos = aiFavorites.stream()
+                .map(favorite -> toAiDressFavoriteDto(favorite, dressMap.get(favorite.getDressId())))
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -105,6 +126,7 @@ public class ProfileService {
                 summary,
                 bookingDtos,
                 favoriteDtos,
+                aiFavoriteDtos,
                 albumDtos,
                 paymentDtos,
                 reviewDtos
@@ -264,6 +286,25 @@ public class ProfileService {
                 item.getBadge(),
                 true,
                 conceptFavoriteRepository.countByProductItemId(item.getId())
+        );
+    }
+
+    private ProfileAiDressFavoriteDto toAiDressFavoriteDto(AiDressFavorite favorite, WeddingDress dress) {
+        if (dress == null) {
+            return null;
+        }
+
+        return new ProfileAiDressFavoriteDto(
+                favorite.getId(),
+                favorite.getDressId(),
+                dress.getDressName(),
+                dress.getDressType(),
+                dress.getStyle(),
+                dress.getBodyShape(),
+                dress.getPrice(),
+                dress.getImageUrl(),
+                dress.getDescription(),
+                true
         );
     }
 

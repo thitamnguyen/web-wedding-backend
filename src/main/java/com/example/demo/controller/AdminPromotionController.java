@@ -120,6 +120,12 @@ public class AdminPromotionController {
         return ResponseEntity.ok(Map.of("message", "Đã dọn ưu đãi hết hạn"));
     }
 
+    @PostMapping("/admin/promotions/cleanup-expired")
+    public ResponseEntity<?> triggerManualCleanup() {
+        String result = promotionService.manualCleanupExpiredPromotions();
+        return ResponseEntity.ok(Map.of("message", result));
+    }
+
     private String generateDefaultCode(Promotion promotion) {
         String source = promotion.getName() != null ? promotion.getName() : "PROMO";
         String normalized = source.trim().toUpperCase()

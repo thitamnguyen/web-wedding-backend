@@ -100,25 +100,25 @@ public class ChatService {
         }
 
         // 3. [GIỮ NGUYÊN] LẤY DANH SÁCH ƯU ĐÃI ĐANG KÍCH HOẠT TỪ DATABASE
-        StringBuilder dynamicPromotionsContext = new StringBuilder("DANH SÁCH CHƯƠNG TRÌNH ƯU ĐÃI / KHUYẾN MÃI ĐANG CÓ HIỆU LỰC:\n");
-        try {
-            List<Promotion> activePromotions = promotionRepository.findActivePromotionsByDate(LocalDate.now());
-            if (activePromotions.isEmpty()) {
-                activePromotions = promotionRepository.findAll().stream().filter(Promotion::getActive).collect(Collectors.toList());
-            }
-            if (activePromotions.isEmpty()) {
-                dynamicPromotionsContext.append("- Hiện tại hệ thống chưa kích hoạt chương trình ưu đãi nào mới.\n");
-            } else {
-                for (Promotion p : activePromotions) {
-                    dynamicPromotionsContext.append("- Mã/Chương trình: ").append(p.getName())
-                            .append(" | Code: ").append(p.getId() != null ? p.getId() : "Áp dụng tự động")
-                            .append(" | Chi tiết: ").append(p.getDescription())
-                            .append(" | Giảm giá: ").append(p.getDiscountPercentage()).append("%\n");
-                }
-            }
-        } catch (Exception e) {
-            dynamicPromotionsContext.append("- Không thể kết nối dữ liệu khuyến mãi lúc này.\n");
-        }
+//        StringBuilder dynamicPromotionsContext = new StringBuilder("DANH SÁCH CHƯƠNG TRÌNH ƯU ĐÃI / KHUYẾN MÃI ĐANG CÓ HIỆU LỰC:\n");
+//        try {
+//            List<Promotion> activePromotions = promotionRepository.findActivePromotionsByDate(LocalDate.now());
+//            if (activePromotions.isEmpty()) {
+//                activePromotions = promotionRepository.findAll().stream().filter(Promotion::getActive).collect(Collectors.toList());
+//            }
+//            if (activePromotions.isEmpty()) {
+//                dynamicPromotionsContext.append("- Hiện tại hệ thống chưa kích hoạt chương trình ưu đãi nào mới.\n");
+//            } else {
+//                for (Promotion p : activePromotions) {
+//                    dynamicPromotionsContext.append("- Mã/Chương trình: ").append(p.getName())
+//                            .append(" | Code: ").append(p.getId() != null ? p.getId() : "Áp dụng tự động")
+//                            .append(" | Chi tiết: ").append(p.getDescription())
+//                            .append(" | Giảm giá: ").append(p.getDiscountPercentage()).append("%\n");
+//                }
+//            }
+//        } catch (Exception e) {
+//            dynamicPromotionsContext.append("- Không thể kết nối dữ liệu khuyến mãi lúc này.\n");
+//        }
 
         // 4. [GIỮ NGUYÊN] XỬ LÝ LOGIC CONCEPT ĐỊNH VỊ CONCEPT MỚI NHẤT VÀ RẺ NHẤT
         StringBuilder dynamicConceptsContext = new StringBuilder("DỮ LIỆU ĐỘNG VỀ CÁC CONCEPT NỔI BẬT ĐANG CÓ TẠI STUDIO:\n");
@@ -162,7 +162,7 @@ public class ChatService {
                 + "PHONG CÁCH: Trả lời ngắn gọn, chia nhỏ thành các dòng bằng dấu xuống dòng (\\n), sử dụng emoji sinh động (📸, 💎, ✨, 👉).\n\n"
                 + "DỮ LIỆU THỰC TẾ TỪ DATABASE:\n"
                 + dynamicServicesContext.toString() + "\n"
-                + dynamicPromotionsContext.toString() + "\n"
+//                + dynamicPromotionsContext.toString() + "\n"
                 + dynamicConceptsContext.toString() + "\n"
                 + "BỘ TRI THỨC ĐIỀU KHOẢN STUDIO:\n"
                 + studioPolicyKnowledge + "\n\n"

@@ -1,0 +1,11 @@
+.git
+.idea
+.mvn
+target
+*.log
+*.err.log
+*.out.log
+replay_*.log
+hs_err_pid*.log
+README.md
+HELP.md
