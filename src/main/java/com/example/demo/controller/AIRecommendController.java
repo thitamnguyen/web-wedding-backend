@@ -30,117 +30,54 @@ public class AIRecommendController {
             weddingDressRepository;
 
     @PostMapping("/recommend")
-    public ResponseEntity<?>
-    recommendDress(
+    public ResponseEntity<?> recommendDress(
 
-            @RequestParam("file")
-            MultipartFile file,
+            @RequestParam("file") MultipartFile file,
 
-            @RequestParam(
-                    value = "style",
-                    required = false
-            )
+            @RequestParam(value = "style", required = false)
             String style,
 
-            @RequestParam(
-                    value = "budget",
-                    required = false
-            )
+            @RequestParam(value = "budget", required = false)
             Long budget
 
     ) throws IOException {
-        // gọi AI
-        AiResponse aiResult =
-                aiService
-                        .predictBodyShape(file);
 
-        String bodyShape =
-                aiResult.getBody_shape();
+        try {
 
-        System.out.println(
-                "Detected body shape: "
-                        + bodyShape
-        );
+            // gọi AI
+            AiResponse aiResult = aiService.predictBodyShape(file);
 
-        // query DB
-        List<WeddingDress>
-                dresses;
+            String bodyShape = aiResult.getBody_shape();
 
-        // nếu chưa có filter
-        if (style == null
-                && budget == null) {
+            System.out.println("Detected body shape: " + bodyShape);
 
-            dresses =
-                    weddingDressRepository
-                            .findByBodyShape(
-                                    bodyShape
-                            );
+            List<WeddingDress> dresses;
 
-        } else {
+            if (style == null && budget == null) {
+                dresses = weddingDressRepository.findByBodyShape(bodyShape);
+            } else {
+                dresses = weddingDressRepository.findRecommendedDress(
+                        bodyShape,
+                        style,
+                        budget
+                );
+            }
 
-            dresses =
-                    weddingDressRepository
-                            .findRecommendedDress(
-                                    bodyShape,
-                                    style,
-                                    budget
-                            );
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("bodyShape", bodyShape);
+            response.put("message", dresses.isEmpty() ? "Không có váy phù hợp" : null);
+            response.put("dresses", dresses);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+
+            return ResponseEntity.badRequest().body(error);
         }
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("bodyShape", bodyShape);
-        response.put("message", dresses.isEmpty() ? "Không có váy phù hợp" : null);
-        response.put("dresses", dresses);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping(
-            value = "/try-on",
-            produces = MediaType.IMAGE_JPEG_VALUE
-    )
-    public ResponseEntity<byte[]>
-    generateWeddingTryOn(
-
-            @RequestParam("person")
-            MultipartFile person,
-
-            @RequestParam("garment")
-            MultipartFile garment,
-
-            @RequestParam(
-                    value = "role",
-                    required = false
-            )
-            String role,
-
-            @RequestParam(
-                    value = "style",
-                    required = false
-            )
-            String style,
-
-            @RequestParam(
-                    value = "mode",
-                    required = false
-            )
-            String mode
-
-    ) throws IOException {
-        TryOnResult result =
-                aiService
-                        .generateWeddingTryOn(
-                                person,
-                                garment,
-                                role,
-                                style,
-                                mode
-                        );
-
-        return ResponseEntity
-                .ok()
-                .contentType(MediaType.IMAGE_JPEG)
-                .header("X-Try-On-Mode", result.getMode())
-                .header("X-Try-On-Notice", result.getNotice())
-                .body(result.getImageBytes());
     }
 }
