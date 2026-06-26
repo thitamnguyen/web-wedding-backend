@@ -28,6 +28,8 @@ import java.util.Optional;
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class BookingController {
     @Autowired
+    private com.example.demo.repository.NotificationRepository notificationRepository;
+    @Autowired
     private com.example.demo.repository.BookingRepository bookingRepository;
     @Autowired
     private BookingService bookingService;
@@ -181,11 +183,12 @@ public class BookingController {
         }
     }
 
+
     // API Public tiếp nhận dữ liệu Webhook tự động từ SEpay khi tài khoản ngân hàng nổ tiền cọc
     @PostMapping("/public/sepay-webhook")
     public ResponseEntity<?> handleSepayWebhook(@RequestBody Map<String, Object> payload) {
         try {
-            // Đọc nội dung chuyển khoản do SEpay gửi sang (trường "content")
+            // Đọc nội dung chuyển khoản do SEpay gửi sang (trường "content" hoặc "transactionContent")
             String description = (String) payload.get("content");
             if (description == null) {
                 description = (String) payload.get("transactionContent");
@@ -198,11 +201,14 @@ public class BookingController {
             System.out.println("====== [SEPAY WEBHOOK DETECTED] ======");
             System.out.println("Nội dung tin nhắn: " + description);
 
-            // Chuẩn hóa chuỗi xóa khoảng trắng: ví dụ "STDBK 12" -> "STDBK12"
+            // Chuẩn hóa chuỗi xóa khoảng trắng và chuyển chữ hoa: ví dụ "STUDIOWS 12" -> "STUDIOWS12"
             String cleanDesc = description.toUpperCase().replaceAll("\\s+", "");
-            if (cleanDesc.contains("STDBK")) {
-                int index = cleanDesc.indexOf("STDBK") + 5;
-                // Trích xuất chuỗi số ID phía sau chữ STDBK
+
+            // 🔥 THẦY ĐÃ SỬA: Chuyển từ 'STDBK' sang 'STUDIOWS' để khớp hoàn toàn với giao diện Client hiển thị
+            if (cleanDesc.contains("STUDIOWS")) {
+                int index = cleanDesc.indexOf("STUDIOWS") + 8; // "STUDIOWS" có 8 ký tự
+
+                // Trích xuất chuỗi số ID phía sau chữ STUDIOWS
                 String idStr = cleanDesc.substring(index).replaceAll("[^0-9]", "");
 
                 if (!idStr.isEmpty()) {
@@ -215,10 +221,25 @@ public class BookingController {
                         // Nếu đơn đang chờ thanh toán thì tự động duyệt cọc ngay lập tức
                         if ("PENDING".equals(booking.getStatus())) {
                             booking.setStatus("CONFIRMED"); // Đổi trạng thái sang: Đã xác nhận giữ lịch
-                            booking.setPaymentStatus("DEPOSITED"); // Trạng thái tiền: Đã cọc 20%
+                            booking.setPaymentStatus("DEPOSITED"); // Trạng thái tiền: Đã cọc thành công
                             bookingRepository.save(booking);
 
                             System.out.println("✓ [XỬ LÝ TỰ ĐỘNG THÀNH CÔNG] Lịch đặt #" + bookingId + " đã tự động chuyển sang ĐÃ CỌC!");
+
+                            // 🔔 🔥 ĐOẠN THẦY THÊM: TỰ ĐỘNG BẮN CHUÔNG THÔNG BÁO NỔI SANG CHO ADMIN BIẾT Luôn
+                            try {
+                                com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+                                notif.setTitle("💸 Khách Cọc Online Thành Công!");
+                                notif.setMessage("Hệ thống SEpay vừa duyệt tự động đơn hàng #" + booking.getId() + " của khách " + booking.getCustomerName() + " số tiền cọc qua Chuyển Khoản Ngân Hàng.");
+                                notif.setBookingId(booking.getId());
+                                notif.setIsRead(false);
+                                notif.setCreatedAt(java.time.LocalDateTime.now());
+
+                                notificationRepository.save(notif);
+                            } catch (Exception eNotif) {
+                                System.err.println("Lỗi tạo thông báo nổi cho Webhook: " + eNotif.getMessage());
+                            }
+
                             return ResponseEntity.ok(Map.of("success", true, "message", "Duyệt cọc tự động thành công"));
                         }
                     }
