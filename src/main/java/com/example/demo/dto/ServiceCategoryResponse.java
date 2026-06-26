@@ -6,14 +6,20 @@ import java.util.List;
 @Data
 public class ServiceCategoryResponse {
 
+    private Integer dbId;
     private String id;
     private String title;
     private String tagline;
     private String image;
     private String subTitle;
     private String desc;
+    private String publicId;
 
     private List<ServicePackageResponse> packages;
+
+    public Integer getDbId() {
+        return dbId;
+    }
 
     public String getId() {
         return id;
@@ -39,8 +45,16 @@ public class ServiceCategoryResponse {
         return desc;
     }
 
+    public String getPublicId() {
+        return publicId;
+    }
+
     public List<ServicePackageResponse> getPackages() {
         return packages;
+    }
+
+    public void setDbId(Integer dbId) {
+        this.dbId = dbId;
     }
 
     public void setId(String id) {
@@ -65,6 +79,10 @@ public class ServiceCategoryResponse {
 
     public void setDesc(String desc) {
         this.desc = desc;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
     }
 
     public void setPackages(List<ServicePackageResponse> packages) {

@@ -6,6 +6,8 @@ import lombok.Data;
 public class ServicePackageResponse {
 
     private Integer id;
+    private Integer categoryId;
+    private String categoryTitle;
     private String name;
     private String price;
     private Double rawPrice;
@@ -19,8 +21,24 @@ public class ServicePackageResponse {
         return id;
     }
 
+    public Integer getCategoryId() {
+        return categoryId;
+    }
+
+    public String getCategoryTitle() {
+        return categoryTitle;
+    }
+
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public void setCategoryTitle(String categoryTitle) {
+        this.categoryTitle = categoryTitle;
     }
 
     public String getName() {

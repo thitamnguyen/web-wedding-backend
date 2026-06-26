@@ -6,6 +6,8 @@ import com.example.demo.repository.PromotionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class PromotionService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PromotionService.class);
 
     private final PromotionRepository promotionRepository;
     private final BookingRepository bookingRepository;
@@ -86,7 +90,57 @@ public class PromotionService {
     @Transactional
     @Scheduled(cron = "0 0 2 * * *")
     public void cleanupExpiredPromotions() {
-        promotionRepository.deleteExpiredPromotions(LocalDate.now());
+        try {
+            LocalDate today = LocalDate.now();
+            logger.info("Starting scheduled cleanup of expired promotions. Today: {}", today);
+            
+            // Count expired promotions before deletion
+            long expiredCount = promotionRepository.findAll().stream()
+                    .filter(p -> p.getEndDate() != null && p.getEndDate().isBefore(today))
+                    .count();
+            logger.info("Found {} expired promotions to delete", expiredCount);
+            
+            promotionRepository.deleteExpiredPromotions(today);
+            logger.info("Successfully deleted expired promotions");
+        } catch (Exception e) {
+            logger.error("Error during cleanup of expired promotions", e);
+        }
+    }
+
+    /**
+     * Manual endpoint to trigger cleanup immediately (for testing)
+     * Use this to test if cleanup works without waiting for scheduled time
+     */
+    @Transactional
+    public String manualCleanupExpiredPromotions() {
+        try {
+            LocalDate today = LocalDate.now();
+            logger.info("Manual cleanup triggered. Today: {}", today);
+            
+            // Get all promotions to count expired
+            List<Promotion> allPromotions = promotionRepository.findAll();
+            long expiredCount = allPromotions.stream()
+                    .filter(p -> p.getEndDate() != null && p.getEndDate().isBefore(today))
+                    .count();
+            
+            logger.info("Manual cleanup: Found {} expired promotions", expiredCount);
+            
+            if (expiredCount == 0) {
+                logger.warn("No expired promotions found. Check if any promotions have endDate in the past.");
+                return "No expired promotions found to delete. Promotion details:\n" +
+                        allPromotions.stream()
+                                .map(p -> String.format("ID=%d, Code=%s, EndDate=%s, Active=%s", 
+                                    p.getId(), p.getCode(), p.getEndDate(), p.getActive()))
+                                .collect(Collectors.joining("\n"));
+            }
+            
+            promotionRepository.deleteExpiredPromotions(today);
+            logger.info("Manual cleanup: Successfully deleted {} expired promotions", expiredCount);
+            return "Successfully deleted " + expiredCount + " expired promotions";
+        } catch (Exception e) {
+            logger.error("Error during manual cleanup of expired promotions", e);
+            return "Error: " + e.getMessage();
+        }
     }
 
     private boolean isWithinDateRange(Promotion promotion, LocalDate date) {

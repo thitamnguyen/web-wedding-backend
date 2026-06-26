@@ -7,6 +7,7 @@ public record ProfileDashboardResponse(
         ProfileSummaryDto summary,
         List<ProfileBookingDto> bookings,
         List<ProfileFavoriteConceptDto> favoriteConcepts,
+        List<ProfileAiDressFavoriteDto> favoriteAiDresses,
         List<ProfileAlbumDto> albums,
         List<ProfilePaymentDto> payments,
         List<ProfileReviewDto> reviews
