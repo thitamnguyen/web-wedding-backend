@@ -57,6 +57,9 @@ public class AuthService {
 
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            throw new RuntimeException("Tài khoản của bạn đã bị khóa hoặc chặn quyền truy cập bởi Ban Quản Trị!");
+        }
 
         if (!matchesPassword(password, user.getPassword())) {
             throw new RuntimeException("Sai mật khẩu");
