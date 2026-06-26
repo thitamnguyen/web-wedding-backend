@@ -213,28 +213,35 @@ public class BookingService {
         String upperStatus = newStatus == null ? "" : newStatus.toUpperCase();
         boolean wasCompletedBefore = isCompletedStatus(previousStatus);
 
-        if ("CONFIRMED".equals(upperStatus)) {
-            if (booking.getPhotographerId() != null) {
-                boolean isPhotoBusy = bookingRepository.existsByPhotographerIdAndBookingDateAndStatus(
-                        booking.getPhotographerId(), booking.getBookingDate(), "CONFIRMED"
-                );
-                if (isPhotoBusy) {
-                    throw new RuntimeException("Tho anh da bi trung lich chup ngay " + booking.getBookingDate() + "!");
-                }
-            }
+        String oldStatus = booking.getStatus();
+
+        // [LUỒNG CẬP NHẬT TRẠNG THÁI VÀ DÒNG TIỀN THEO YÊU CẦU]
+        if ("CONFIRMED".equalsIgnoreCase(newStatus)) {
+            // Giai đoạn 1: Admin duyệt cọc (Chuyển sang trạng thái thợ chuẩn bị/đang làm việc)
             booking.setStatus("CONFIRMED");
-            booking.setPaymentStatus("DEPOSITED");
-        } else if ("DONE".equals(upperStatus) || "COMPLETED".equals(upperStatus)) {
+            booking.setPaymentStatus("DEPOSITED"); // Đã thu tiền cọc
+
+            // Số tiền cọc (20%) chính thức chạy thẳng vào két thực tế
+            double deposit = booking.getTotalPrice() * 0.2;
+            booking.setDepositAmount(deposit);
+            booking.setRemainingAmount(booking.getTotalPrice() - deposit);
+
+        } else if ("DONE".equalsIgnoreCase(newStatus) || "COMPLETED".equalsIgnoreCase(newStatus)) {
+            // Giai đoạn 2: Thu nốt tiền còn lại khi chụp xong -> Hoàn thành đơn hàng
             booking.setStatus("DONE");
-            booking.setPaymentStatus("PAID");
-        } else if ("CANCELLED".equals(upperStatus)) {
-            booking.setStatus("CANCELLED");
-            booking.setPaymentStatus("REFUNDED_OR_VOID");
+            booking.setPaymentStatus("PAID"); // Đã thanh toán 100%
+
+            // Đảm bảo số tiền cọc và còn lại được ghi nhận đủ đầy
+            double deposit = booking.getDepositAmount() != null ? booking.getDepositAmount() : (booking.getTotalPrice() * 0.2);
+            booking.setDepositAmount(deposit);
+            booking.setRemainingAmount(0.0); // Không còn nợ
         } else {
-            booking.setStatus(upperStatus);
+            // Các trạng thái khác như PENDING, CANCELLED
+            booking.setStatus(newStatus.toUpperCase());
         }
 
         Booking savedBooking = bookingRepository.save(booking);
+
         if (!wasCompletedBefore && isCompletedStatus(savedBooking.getStatus())) {
             addRevenueToStaff(savedBooking);
         }
