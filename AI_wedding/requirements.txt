@@ -4,5 +4,4 @@ tensorflow
 pillow
 numpy
 python-multipart
-mediapipe==0.10.35
-protobuf==6.31.1
+ultralytics
