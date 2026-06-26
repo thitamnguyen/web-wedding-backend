@@ -15,6 +15,9 @@ import java.util.Optional;
 public interface PromotionRepository extends JpaRepository<Promotion, Long> {
     List<Promotion> findByActiveTrueOrderByStartDateDescIdDesc();
 
+    // Tìm các khuyến mãi đang trong thời gian hiệu lực và đang bật (active)
+    @Query("SELECT p FROM Promotion p WHERE p.active = true AND :date BETWEEN p.startDate AND p.endDate")
+    List<Promotion> findActivePromotionsByDate(@Param("date") LocalDate date);
     List<Promotion> findByActiveTrueAndStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDescIdDesc(
             LocalDate startDate,
             LocalDate endDate

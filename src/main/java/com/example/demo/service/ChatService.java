@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Service
 public class ChatService {
 
-    //private final String apiKey = "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";
+    private final String apiKey = "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";
     private final WebClient webClient = WebClient.builder().build();
 
     @Autowired
@@ -154,7 +154,7 @@ public class ChatService {
                 + "+ SỰ CỐ THỜI TIẾT / HỦY LỊCH: Nếu ngày chụp gặp trời mưa bão lớn không thể thực hiện ngoại cảnh, Studio hỗ trợ hai bạn dời lịch sang ngày khác miễn phí hoàn toàn, hoặc chuyển vào chụp concept tại studio/phim trường. Nếu hai bạn bận việc đột xuất muốn dời lịch, vui lòng báo trước cho ekip ít nhất 5 ngày.\n"
                 + "+ CHI PHÍ DI CHUYỂN, VÉ VÀO CỔNG: Studio luôn chuẩn bị xe 16 chỗ đưa đón toàn bộ cô dâu chú rể và ekip trong suốt ngày chụp. Các chi phí về vé vào cổng phim trường hay vé các địa điểm tham quan đã bao gồm trọn gói trong dịch vụ (khách hàng không cần trả thêm).\n"
                 + "+ ĐỒ TRANG PHỤC VÀ TRANG ĐIỂM: Cô dâu được tự do thử và chọn các mẫu váy cưới trong BST mới nhất. Chú rể được mượn vest cao cấp vừa size. Đi chụp ngoại cảnh xa, thợ chuyên gia makeup của studio luôn đi theo hỗ trợ dặm phấn, thay đổi layout trang điểm và làm 2 - 3 kiểu tóc phù hợp với từng trang phục.\n"
-                + "+ PHƯƠNG THỨC THANH TOÁN & ĐẶT CỌC: Để giữ lịch chụp, hai bạn sẽ đặt cọc trước 20% giá trị gói dịch vụ. Số tiền còn lại 70% hai bạn sẽ thanh toán vào ngày đi chụp ảnh trực tiếp tại studio hoặc chuyển khoản.";
+                + "+ PHƯƠNG THỨC THANH TOÁN & ĐẶT CỌC: Để giữ lịch chụp, hai bạn sẽ đặt cọc trước 20% giá trị gói dịch vụ. Số tiền còn lại 80% hai bạn sẽ thanh toán vào ngày đi chụp ảnh trực tiếp tại studio hoặc chuyển khoản.";
 
         // 6. THIẾT LẬP SYSTEM CONTEXT TỔNG HỢP TOÀN BỘ NĂNG LỰC CỦA BOT
         String systemContext = "Bạn là trợ lý ảo tư vấn thông minh 'LuxeAI' của Studio chụp ảnh cưới.\n"
@@ -184,8 +184,8 @@ public class ChatService {
 
         try {
             Map<?, ?> openRouterResponse = webClient.post()
-                   // .uri("https://openrouter.ai/api/v1/chat/completions")
-                   // .header("Authorization", "Bearer " + apiKey)
+                    .uri("https://openrouter.ai/api/v1/chat/completions")
+                   .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
                     .header("HTTP-Referer", "http://localhost:8080")

@@ -25,6 +25,8 @@ import java.util.Map;
 
 @Service
 public class BookingService {
+    @Autowired
+    private com.example.demo.repository.NotificationRepository notificationRepository;
 
     @Autowired
     private BookingRepository bookingRepository;
@@ -103,7 +105,34 @@ public class BookingService {
         } catch (Exception e) {
             System.err.println("Error sending auto email: " + e.getMessage());
         }
+        // --- ĐOẠN CODE BỔ SUNG: TỰ ĐỘNG BẮN THÔNG BÁO CHO ADMIN ---
+        try {
+            com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+            notif.setTitle("📅 Đơn Đặt Lịch Mới!");
+            notif.setMessage("Khách hàng " + savedBooking.getCustomerName() + " vừa đặt lịch hẹn chụp ngày " + savedBooking.getBookingDate());
+            notif.setBookingId(savedBooking.getId());
+            notif.setIsRead(false);
+            notif.setCreatedAt(java.time.LocalDateTime.now());
 
+            // Lưu thông báo nổi vào database để quả chuông Admin nhận diện được luôn
+            notificationRepository.save(notif);
+        } catch (Exception e) {
+            System.err.println("Lỗi tự động tạo thông báo đặt lịch: " + e.getMessage());
+        }
+
+        // 🔔 🔥 ĐOẠN THẦY THÊM: Bọc try-catch an toàn tuyệt đối, tránh gây crash luồng đặt lịch chính của khách
+        try {
+            com.example.demo.model.Notification notif = new com.example.demo.model.Notification();
+            notif.setTitle("📅 Đơn Đặt Lịch Mới!");
+            notif.setMessage("Khách hàng " + savedBooking.getCustomerName() + " vừa đặt lịch hẹn chụp ngày " + savedBooking.getBookingDate());
+            notif.setBookingId(savedBooking.getId());
+            notif.setIsRead(false);
+            notif.setCreatedAt(java.time.LocalDateTime.now());
+
+            notificationRepository.save(notif);
+        } catch (Exception e) {
+            System.err.println("Log cảnh báo: Lỗi bắn chuông thông báo nhưng đơn hàng vẫn đặt thành công: " + e.getMessage());
+        }
         return savedBooking;
     }
 
